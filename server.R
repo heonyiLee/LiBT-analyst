@@ -1,11 +1,19 @@
 library(shiny)
 # Output: Histogram ----
-shinyServer(function(input,output){
-  output$data_type <- renderText({
-    input$radio
-  })
+
+shinyServer(function(input,output, session){
+
+  step <- c()
+  dType <- c()
+  sample_num <- c()
+  time <- c()
   
-  output$input <- renderTable({
+  
+  # output$data_type <- renderText({
+  #     input$data_type
+  # })
+  
+  output$input_data <- renderTable({
     
     # input$file1 will be NULL initially. After the user selects
     # and uploads a file, head of that data file by default,
@@ -21,6 +29,11 @@ shinyServer(function(input,output){
                        header = input$header,
                        sep = input$sep,
                        quote = input$quote)
+        
+        timeLine <- data.frame(step="Data Input",dType=input$data_type,sample_num=as.numeric(nrow(df)),time=as.character(Sys.time()))
+        print(timeLine)
+        #step <- c(step,"Data Input")
+        addTimeLine(timeLine)
       },
       error = function(e) {
         # return a safeError if a parsing error occurs
@@ -37,4 +50,26 @@ shinyServer(function(input,output){
     
   })
   
+  addTimeLine = function(timeLine){
+    output$timeline <- renderUI({
+      timelineBlock(
+        reversed = F,
+        timelineEnd(color = "danger"),
+        apply(timeLine, 1, FUN = function(i){
+          tagAppendAttributes(
+            #timelineLabel(timeLine$sample_num, color = "teal"),
+            timelineItem(
+              style="width:400px;",
+              title = timeLine$step,
+              icon = "gears",
+              color = "olive",
+              time = timeLine$time,
+              footer = paste0("Data Type : \n ", timeLine$dType)
+            )
+          )
+        }),
+        timelineStart(color = "gray")
+      )
+    })
+  }
 })

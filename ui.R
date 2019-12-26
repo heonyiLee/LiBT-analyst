@@ -2,9 +2,10 @@ library(shiny)
 library(shinydashboard)
 library(shinydashboardPlus)
 # Define UI for app that draws a histogram ----
-shinyUI(dashboardPage(
-  dashboardHeader(
-    
+shinyUI(dashboardPagePlus(
+  dashboardHeaderPlus(
+    enable_rightsidebar = TRUE,
+    rightSidebarIcon = "clock"
   ),
   dashboardSidebar(
     br(),
@@ -15,9 +16,9 @@ shinyUI(dashboardPage(
       gradientColor = "maroon", 
       boxToolSize = "md", 
       closable = F,
-      footer= radioButtons("radio", label="", 
-                           choices = list("LFQ" = 1, "iBAQ" = 2, "TMT" = 3), 
-                           selected = 1)
+      footer= radioButtons("data_type", label="", 
+                           choices = list("LFQ" = "LFQ", "iBAQ" = "iBAQ", "TMT" = "TMT"), 
+                           selected = "LFQ")
     ),
     gradientBox(
       title = "Input CSV Data",
@@ -64,41 +65,19 @@ shinyUI(dashboardPage(
   ),
   dashboardBody(
     box(
-      collapsible = TRUE,
-      title = "Reversed Timeline: ideal to include in a box",
-      status = "info",
       width = NULL,
-      timelineBlock(
-        timelineEnd(color = "danger"),
-        timelineLabel(2018, color = "teal"),
-        timelineItem(
-          title = "Item 1",
-          icon = "gears",
-          color = "olive",
-          time = "now",
-          footer = "Here is the footer",
-          "This is the body"
-        ),
-        timelineItem(
-          title = "Item 2",
-          border = FALSE
-        ),
-        timelineLabel(2015, color = "orange"),
-        timelineItem(
-          title = "Item 3",
-          icon = "paint-brush",
-          color = "primary",
-          timelineItemMedia(src = "http://placehold.it/150x100"),
-          timelineItemMedia(src = "http://placehold.it/150x100")
-        ),
-        timelineStart(color = "gray")
-      )
-    ),
-    box(
-      width = NULL,
-      tableOutput("input")
+      tableOutput("input_data")
     )
-  ), 
+  ),
+  rightSidebar(
+    background = "dark",
+    rightSidebarTabContent(
+      id=1,
+      active = T,
+      icon="",
+      uiOutput("timeline")
+    )
+  ),
   title = "DemoWEB"
   )
 )
