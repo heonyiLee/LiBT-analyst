@@ -57,19 +57,13 @@ ui <- function(request) {shinyUI(
                          selected = "LFQ"),
             
             checkboxGroupInput("first_filtering", label="First Filtering (Remove all)", 
-<<<<<<< HEAD
-                               choices = list("Potential contaminant" = 1, 
-                                              "Reverse" = 2, "Only identified by site" = 3,
-                                              "Without Filtering" = 4)) 
-=======
                                choices = list("Potential contaminant" = "potential", 
                                               "Reverse" = "reverse", 
                                               "Only identified by site" = "identified")),
             actionButton("select_all_filtering_btn", "Select All"),
             actionButton("deselect_all_filtering_btn", "Deselect All")
             
-            
->>>>>>> jy
+          
           )
         ),
         gradientBox(
