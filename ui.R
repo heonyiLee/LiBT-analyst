@@ -75,6 +75,20 @@ ui <- function(request) {shinyUI(
       rightSidebarTabContent(
         id=2,
         icon="gears",
+        #active = T,
+        gradientBox(
+          title = "Transformation",
+          width = 12,
+          gradientColor = "teal", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            radioButtons("transformation", label="", 
+                         choices = list("log2" = "log2", "none" = "none"), 
+                         selected = "log2"),
+          )
+        )
+        ,actionButton("preprocess_btn", "Preprocess")
       ),
       rightSidebarTabContent(
         id=3,
