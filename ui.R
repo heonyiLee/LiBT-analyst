@@ -13,7 +13,7 @@ ui <- function(request) {shinyUI(
     ),
     sidebar = dashboardSidebar(
       sidebarMenu(
-        menuItem("TimeLine", selected = TRUE, icon=icon("clock"),
+        menuItem("TimeLine", selected = TRUE, icon=icon("history"),
                  tabName = "timeline", uiOutput("timeline"))
       )
     ), # End of dashboardSidebar
@@ -74,7 +74,7 @@ ui <- function(request) {shinyUI(
       ),
       rightSidebarTabContent(
         id=2,
-        icon="gears",
+        icon="dna",
         #active = T,
         gradientBox(
           title = "Transformation",
@@ -86,6 +86,43 @@ ui <- function(request) {shinyUI(
             radioButtons("transformation", label="", 
                          choices = list("log2" = "log2", "none" = "none"), 
                          selected = "log2"),
+          )
+        ),
+        gradientBox(
+          title = "Filter based on Valid Value",
+          width = 12,
+          gradientColor = "teal", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            radioButtons("valid_value", label="Choose % of valid value", 
+                         choices = list("30%" = 30, "50%" = 50, "70%"=70, "100%"=100), 
+                         selected = 70)
+          )
+        ),
+        gradientBox(
+          title = "Deal with Missing Value",
+          width = 12,
+          gradientColor = "teal", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            radioButtons("imputation", label="Choose Imputation", 
+                         choices = list("Normal distribution" = "nordis", "Constant" = "const", 
+                                        "NaN"="nan", "none"="none"), 
+                         selected = "nordis")
+          )
+        ),
+        gradientBox(
+          title = "Normalization",
+          width = 12,
+          gradientColor = "teal", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            radioButtons("normalization", label="Choose method of normalization", 
+                         choices = list("Width distribution" = "quantile", "none" = "none"), 
+                         selected = "quantile")
           )
         )
         ,actionButton("preprocess_btn", "Preprocess")

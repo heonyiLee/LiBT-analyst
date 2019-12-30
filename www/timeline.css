@@ -1,9 +1,14 @@
 .timeline{
   padding-top:10px;
   padding-bottom:30px;
+  overflow-y : auto;
+  
 }
 .timeline>li>.timeline-item{
   width:145px;
+}
+.timeline>.time-label{
+  margin-left:20px;
 }
 
 .timeline>li>.timeline-item>.time {
