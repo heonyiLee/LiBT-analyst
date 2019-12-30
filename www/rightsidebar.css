@@ -2,6 +2,9 @@
   padding:0;
   margin-bottom:0
 }
+#controlbar hr{
+  margin-bottom:2px;
+}
 #controlbar .box-body {
   display:none;
 }
