@@ -36,6 +36,9 @@ shinyServer(function(input,output, session){
                                   header = T,
                                   fill = T,
                                   sep = "\t") #4901
+
+      temp_data <- dplyr::filter(temp_data, Unique.peptides != 0)
+      temp_data <- dplyr::filter(temp_data, Intensity != 0)
       
       if(input$first_filtering == "potential") { #4868
         temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+")
