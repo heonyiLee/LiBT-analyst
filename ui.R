@@ -18,6 +18,7 @@ ui <- function(request) {shinyUI(
       )
     ), # End of dashboardSidebar
     body = dashboardBody(
+      useShinyalert(),
       box(
         id = "summary_box",
         solidHeader = T,
@@ -28,7 +29,6 @@ ui <- function(request) {shinyUI(
       
     ), # End of dashboardBody
     rightsidebar = rightSidebar(
-      useShinyalert(),
       id = "rightsidebar",
       width = 350,
       background = "dark",
@@ -55,9 +55,11 @@ ui <- function(request) {shinyUI(
                          selected = "LFQ"),
             
             checkboxGroupInput("first_filtering", label="First Filtering (Remove all)", 
-                               choices = list("Potential contaminant" = 1, 
-                                              "Reverse" = 2, "Only identified by site" = 3,
-                                              "Without Filtering" = 4)) 
+                               choices = list("Potential contaminant" = "potential", 
+                                              "Reverse" = "reverse", 
+                                              "Only identified by site" = "identified",
+                                              "Select All" = "select_all", 
+                                              "Remove All" = "remove_all"), selected=NULL)
             
             
           )

@@ -35,15 +35,15 @@ shinyServer(function(input,output, session){
       temp_data <- read.table(input$fileBrowser$datapath,
                                   header = T,
                                   fill = T,
-                                  sep = "\t")
+                                  sep = "\t") #4901
       
-      if(input$first_filtering == 1) {
+      if(input$first_filtering == "potential") { #4868
         temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+")
-      } else if(input$first_filtering == 2) {
+      } else if(input$first_filtering == "reverse") { #4868
         temp_data <- dplyr::filter(temp_data, Reverse != "+")
-      } else if(input$first_filtering == 3) {
+      } else if(input$first_filtering == "identified") { #4901
         temp_data <- dplyr::filter(temp_data, Only.identified.by.site != "+")
-      } else if(input$first_filtering == 4) {
+      } else if(input$first_filtering == "select_all") {
         temp_data <- temp_data
       } 
       
@@ -55,7 +55,6 @@ shinyServer(function(input,output, session){
     }, error=function(e){
       stop(safeError(e))
     })
-    
     return(temp_data)
   })
   
@@ -75,11 +74,23 @@ shinyServer(function(input,output, session){
     
   })
   
-  observeEvent(input$first_filtering==4, {
-    print("ALL")
-    
-  })
   
+  
+  
+  # observeEvent(input$first_filtering, {
+  #   if(input$first_filtering=="select_all"){
+  #     print("ALL")
+  #     updateCheckboxGroupInput(session, "first_filtering",
+  #                              selected = c("potential","reverse","identified","select_all"))
+  #   } else if(input$first_filtering=="remove_all"){
+  #     updateCheckboxGroupInput(session, "first_filtering",
+  #                              selected = c())
+  #   } else {
+  #     NULL
+  #   }
+  # 
+  # })
+
   
 
   
