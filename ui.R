@@ -59,9 +59,9 @@ ui <- function(request) {shinyUI(
             checkboxGroupInput("first_filtering", label="First Filtering (Remove all)", 
                                choices = list("Potential contaminant" = "potential", 
                                               "Reverse" = "reverse", 
-                                              "Only identified by site" = "identified",
-                                              "Select All" = "select_all", 
-                                              "Remove All" = "remove_all"), selected=NULL)
+                                              "Only identified by site" = "identified")),
+            actionButton("select_all_filtering_btn", "Select All"),
+            actionButton("deselect_all_filtering_btn", "Deselect All")
             
             
           )
