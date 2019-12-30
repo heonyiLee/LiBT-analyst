@@ -19,14 +19,16 @@ ui <- function(request) {shinyUI(
     ), # End of dashboardSidebar
     body = dashboardBody(
       useShinyalert(),
+      tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css")),
+      tags$head(tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css")),
       box(
         id = "summary_box",
         solidHeader = T,
-        width = 10,
+        width = 11,
         # tableOutput("uploaded_file_header")
         DT::dataTableOutput("uploaded_file_header")
       ) # End of uploaded file data table
-      
+      ,useShinyalert(),
     ), # End of dashboardBody
     rightsidebar = rightSidebar(
       id = "rightsidebar",
