@@ -75,7 +75,11 @@ shinyServer(function(input,output, session){
       uploaded_data <- read.table(input$fileBrowser$datapath,
                                   header = T, fill = T,
                                   sep = "\t") 
+      
+      uploaded_data <- dplyr::filter(uploaded_data, Unique.peptides != 0)
+      uploaded_data <- dplyr::filter(uploaded_data, Intensity != 0)
 
+      
       timeLine <- data.frame(step="Data Input",fType=input$file_type,
                              sample_num=as.numeric(nrow(uploaded_data)),
                              time=as.character(Sys.time()))
@@ -121,38 +125,38 @@ shinyServer(function(input,output, session){
       temp_data <- temp_data
     }
     return(temp_data)
-
   })
   
   
+  observeEvent(input$preprocess_btn, {
+    
+    
+  })
   
-  
-  
-  
+
   addTimeLine = function(timeLine){
     output$timeline <- renderUI({
       timelineBlock(
         reversed = F,
         timelineEnd(color = "danger"),
         apply(timeLine, 1, FUN = function(i){
-          tagAppendAttributes(
-            #timelineLabel(timeLine$sample_num, color = "teal"),
+          tagList(
             timelineItem(
-              style="width:400px;",
-              title = paste0(timeLine$step),
-              icon = "gears",
+              icon = "file-upload",
               color = "olive",
-              # time = timeLine$time,
-              footer = paste0("File Type : \n ", timeLine$fType)
+              time = timeLine$time,
+              tags$h4(timeLine$step),
+              footer= tagList(
+                tags$p(paste0("File Type : ", timeLine$fType)),
+              )
             )
+            ,timelineLabel(timeLine$sample_num, color = "teal")
           )
         }),
         timelineStart(color = "gray")
       )
     })
   } # End of addTimeLine
-  
-  
   
   
 })

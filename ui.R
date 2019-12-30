@@ -13,14 +13,14 @@ ui <- function(request) {shinyUI(
     ),
     sidebar = dashboardSidebar(
       sidebarMenu(
-        menuItem("TimeLine", selected = TRUE, icon=icon("clock"),
+        menuItem("TimeLine", selected = TRUE, icon=icon("history"),
                  tabName = "timeline", uiOutput("timeline"))
       )
     ), # End of dashboardSidebar
     body = dashboardBody(
-      useShinyalert(),
       tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css")),
       tags$head(tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css")),
+      tags$head(tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
       box(
         id = "summary_box",
         solidHeader = T,
@@ -37,7 +37,7 @@ ui <- function(request) {shinyUI(
       rightSidebarTabContent(
         id=1,
         active = T,
-        icon="desktop",
+        icon="file-upload",
         
         gradientBox(
           title = "Upload Data",
@@ -62,22 +62,77 @@ ui <- function(request) {shinyUI(
                                               "Only identified by site" = "identified")),
             actionButton("select_all_filtering_btn", "Select All"),
             actionButton("deselect_all_filtering_btn", "Deselect All")
-            
-            
+
           )
-        ), # End of Upload Data box
-        actionButton("file_upload_btn", "Upload file")
+        ),
+        gradientBox(
+            title = "Grouping Data",
+            width = 12,
+            gradientColor = "maroon", 
+            boxToolSize = "md", 
+            closable = F,
+            footer = ""
+        ) # End of Upload Data box
+        ,actionButton("file_upload_btn", "Upload file")
       ),
       rightSidebarTabContent(
         id=2,
-        title = "Input File Format2",
-        icon="clock",
-        textInput("caption", "Caption", "Data Summary")
+        icon="dna",
+        #active = T,
+        gradientBox(
+          title = "Transformation",
+          width = 12,
+          gradientColor = "teal", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            radioButtons("transformation", label="", 
+                         choices = list("log2" = "log2", "none" = "none"), 
+                         selected = "log2"),
+          )
+        ),
+        gradientBox(
+          title = "Filter based on Valid Value",
+          width = 12,
+          gradientColor = "teal", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            radioButtons("valid_value", label="Choose % of valid value", 
+                         choices = list("30%" = 30, "50%" = 50, "70%"=70, "100%"=100), 
+                         selected = 70)
+          )
+        ),
+        gradientBox(
+          title = "Deal with Missing Value",
+          width = 12,
+          gradientColor = "teal", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            radioButtons("imputation", label="Choose Imputation", 
+                         choices = list("Normal distribution" = "nordis", "Constant" = "const", 
+                                        "NaN"="nan", "none"="none"), 
+                         selected = "nordis")
+          )
+        ),
+        gradientBox(
+          title = "Normalization",
+          width = 12,
+          gradientColor = "teal", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            radioButtons("normalization", label="Choose method of normalization", 
+                         choices = list("Width distribution" = "quantile", "none" = "none"), 
+                         selected = "quantile")
+          )
+        )
+        ,actionButton("preprocess_btn", "Preprocess")
       ),
       rightSidebarTabContent(
         id=3,
-        title = "Input File Format3",
-        icon="gears",
+        icon="chart-bar",
         textInput("caption", "Caption", "Data Summary")
       )
     ), # End of rightSidebar
