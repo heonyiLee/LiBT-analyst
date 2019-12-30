@@ -18,9 +18,9 @@ ui <- function(request) {shinyUI(
       )
     ), # End of dashboardSidebar
     body = dashboardBody(
-      useShinyalert(),
       tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css")),
       tags$head(tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css")),
+      tags$head(tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
       box(
         id = "summary_box",
         solidHeader = T,
@@ -37,7 +37,7 @@ ui <- function(request) {shinyUI(
       rightSidebarTabContent(
         id=1,
         active = T,
-        icon="desktop",
+        icon="file-upload",
         
         gradientBox(
           title = "Upload Data",
@@ -57,27 +57,42 @@ ui <- function(request) {shinyUI(
                          selected = "LFQ"),
             
             checkboxGroupInput("first_filtering", label="First Filtering (Remove all)", 
-                               choices = list("Potential contaminant" = "potential", 
-                                              "Reverse" = "reverse", 
-                                              "Only identified by site" = "identified",
-                                              "Select All" = "select_all", 
-                                              "Remove All" = "remove_all"), selected=NULL)
-            
-            
+                               choices = list("Potential contaminant" = 1, 
+                                              "Reverse" = 2, "Only identified by site" = 3,
+                                              "Without Filtering" = 4)) 
           )
-        ), # End of Upload Data box
-        actionButton("file_upload_btn", "Upload file")
+        ),
+        gradientBox(
+            title = "Grouping Data",
+            width = 12,
+            gradientColor = "maroon", 
+            boxToolSize = "md", 
+            closable = F,
+            footer = ""
+        ) # End of Upload Data box
+        ,actionButton("file_upload_btn", "Upload file")
       ),
       rightSidebarTabContent(
         id=2,
-        title = "Input File Format2",
-        icon="clock",
-        textInput("caption", "Caption", "Data Summary")
+        icon="gears",
+        #active = T,
+        gradientBox(
+          title = "Transformation",
+          width = 12,
+          gradientColor = "teal", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            radioButtons("transformation", label="", 
+                         choices = list("log2" = "log2", "none" = "none"), 
+                         selected = "log2"),
+          )
+        )
+        ,actionButton("preprocess_btn", "Preprocess")
       ),
       rightSidebarTabContent(
         id=3,
-        title = "Input File Format3",
-        icon="gears",
+        icon="chart-bar",
         textInput("caption", "Caption", "Data Summary")
       )
     ), # End of rightSidebar

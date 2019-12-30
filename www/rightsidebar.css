@@ -1,4 +1,4 @@
-#control-sidebar-1-tab .control-sidebar-heading{
+.control-sidebar-heading{
   padding:0;
   margin-bottom:0
 }
@@ -9,5 +9,12 @@
   padding:10px 30px 10px 30px;                      
 }
 #file_upload_btn{ 
+  margin-left:15px;
+}
+#transformation .radio{
+  display:inline;
+  margin-right:15px;
+}
+#preprocess_btn{ 
   margin-left:15px;
 }

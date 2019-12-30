@@ -1,0 +1,23 @@
+.timeline{
+  padding-top:10px;
+  padding-bottom:30px;
+}
+.timeline>li>.timeline-item{
+  width:145px;
+}
+
+.timeline>li>.timeline-item>.time {
+  text-align:right;
+}
+.timeline>li>.timeline-item>.timeline-body{
+  padding:2px 2px 2px 10px;
+}
+
+.timeline>li>.timeline-item>.timeline-footer{
+  padding:2px 2px 5px 10px;
+}
+
+.timeline>li>.timeline-item>.timeline-body> h4{
+  margin:5px 0 5px 0;
+  font-weight:bold;
+}

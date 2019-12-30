@@ -78,7 +78,10 @@ shinyServer(function(input,output, session){
   })
   
   
-  
+  observeEvent(input$preprocess_btn, {
+    
+    
+  })
   
   # observeEvent(input$first_filtering, {
   #   if(input$first_filtering=="select_all"){
@@ -95,13 +98,6 @@ shinyServer(function(input,output, session){
   # })
 
   
-
-  
-
-
-  
-  
-  
   
   addTimeLine = function(timeLine){
     output$timeline <- renderUI({
@@ -109,16 +105,17 @@ shinyServer(function(input,output, session){
         reversed = F,
         timelineEnd(color = "danger"),
         apply(timeLine, 1, FUN = function(i){
-          tagAppendAttributes(
-            #timelineLabel(timeLine$sample_num, color = "teal"),
+          tagList(
             timelineItem(
-              style="width:400px;",
-              title = paste0(timeLine$step),
-              icon = "gears",
+              icon = "file-upload",
               color = "olive",
-              # time = timeLine$time,
-              footer = paste0("File Type : \n ", timeLine$fType)
+              time = timeLine$time,
+              tags$h4(timeLine$step),
+              footer= tagList(
+                tags$p(paste0("File Type : ", timeLine$fType)),
+              )
             )
+            ,timelineLabel(timeLine$sample_num, color = "teal")
           )
         }),
         timelineStart(color = "gray")
