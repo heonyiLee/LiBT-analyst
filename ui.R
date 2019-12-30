@@ -3,8 +3,7 @@ library(shinydashboard)
 library(shinydashboardPlus)
 library(shinyalert)
 
-#Edit 2019.12.26
-# Define UI for app that draws a histogram ----
+# 2019.12.30
 ui <- function(request) {shinyUI(
   dashboardPagePlus(
     dashboardHeaderPlus(

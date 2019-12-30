@@ -1,6 +1,6 @@
 library(shiny)
 library(shinyjs)
-# Output: Histogram ----
+# 2019.12.30
 
 shinyServer(function(input,output, session){
   
