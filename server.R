@@ -70,14 +70,14 @@ shinyServer(function(input,output, session){
       for(i in 1:length(filter)){
         if(filter[i]=="potential"){
           tmp <- "'Potential contaminant'"
-          info <- paste0(info,tmp," remove\n")
+          info <- paste0(info,tmp," removed\n")
         }
         else if(filter[i]=="reverse"){
           tmp <- "'Reverse'"
-          info <- paste0(info,tmp," remove\n")
+          info <- paste0(info,tmp," removed\n")
         }else{
           tmp <- "'Only identified by site'"
-          info <- paste0(info,tmp," remove\n")
+          info <- paste0(info,tmp," removed\n")
         }
         
       }
