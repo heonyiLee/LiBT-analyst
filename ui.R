@@ -3,15 +3,17 @@ library(shinydashboard)
 library(shinydashboardPlus)
 library(shinyalert)
 
-#Edit 2019.12.26
-# Define UI for app that draws a histogram ----
+# 2019.12.30
 ui <- function(request) {shinyUI(
   dashboardPagePlus(
     dashboardHeaderPlus(
       enable_rightsidebar = TRUE,
-      rightSidebarIcon = "sliders"
+      rightSidebarIcon = "gears",
+      title = "LiBT-Analyst",
+      titleWidth = 300
     ),
     sidebar = dashboardSidebar(
+      width=300,
       sidebarMenu(
         menuItem("TimeLine", selected = TRUE, icon=icon("history"),
                  tabName = "timeline", uiOutput("timeline"))
@@ -62,8 +64,7 @@ ui <- function(request) {shinyUI(
                                               "Only identified by site" = "identified")),
             actionButton("select_all_filtering_btn", "Select All"),
             actionButton("deselect_all_filtering_btn", "Deselect All")
-            
-          
+
           )
         ),
         gradientBox(
@@ -83,7 +84,7 @@ ui <- function(request) {shinyUI(
         gradientBox(
           title = "Transformation",
           width = 12,
-          gradientColor = "teal", 
+          gradientColor = "aqua", 
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(
@@ -95,7 +96,7 @@ ui <- function(request) {shinyUI(
         gradientBox(
           title = "Filter based on Valid Value",
           width = 12,
-          gradientColor = "teal", 
+          gradientColor = "aqua", 
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(
@@ -107,7 +108,7 @@ ui <- function(request) {shinyUI(
         gradientBox(
           title = "Deal with Missing Value",
           width = 12,
-          gradientColor = "teal", 
+          gradientColor = "aqua", 
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(
@@ -120,7 +121,7 @@ ui <- function(request) {shinyUI(
         gradientBox(
           title = "Normalization",
           width = 12,
-          gradientColor = "teal", 
+          gradientColor = "aqua", 
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(

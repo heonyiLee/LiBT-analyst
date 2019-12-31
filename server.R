@@ -1,13 +1,13 @@
 library(shiny)
 library(shinyjs)
-# Output: Histogram ----
+# 2019.12.30
 
 shinyServer(function(input,output, session){
   
   options(shiny.maxRequestSize=100*1024^2)
 
   step <- c()
-  fType <- c()
+  info <- c()
   sample_num <- c()
   time <- c()
   
@@ -60,6 +60,27 @@ shinyServer(function(input,output, session){
       }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
 
       print(nrow(render_df))
+      filter <- paste0(as.character(unlist(input$first_filtering)))
+      for(i in 1:length(filter)){
+        if(filter[i]=="potential"){
+          tmp <- "'Potential contaminant'"
+          info <- paste0(info,tmp," remove\n")
+        }
+        else if(filter[i]=="reverse"){
+          tmp <- "'Reverse'"
+          info <- paste0(info,tmp," remove\n")
+        }else{
+          tmp <- "'Only identified by site'"
+          info <- paste0(info,tmp," remove\n")
+        }
+        
+      }
+      newTL <- data.frame(step="First Filter",
+                          info=info,
+                          sample_num=as.numeric(nrow(render_df)),
+                          time=as.character(Sys.time()),color="maroon")
+      timeLine <- rbind(timeLine,newTL)
+      addTimeLine(timeLine)
     }
   })
   
@@ -75,10 +96,14 @@ shinyServer(function(input,output, session){
       uploaded_data <- read.table(input$fileBrowser$datapath,
                                   header = T, fill = T,
                                   sep = "\t") 
+      
+      uploaded_data <- dplyr::filter(uploaded_data, Unique.peptides != 0)#4903
+      uploaded_data <- dplyr::filter(uploaded_data, Intensity != 0)#4898
 
-      timeLine <- data.frame(step="Data Input",fType=input$file_type,
+      info <- paste0("File Type : ", input$file_type,"\n","'Unique peptied' == 0 remove\n'Intensity' == 0 remove")
+      timeLine <<- data.frame(step="Data Input",info=info,
                              sample_num=as.numeric(nrow(uploaded_data)),
-                             time=as.character(Sys.time()))
+                             time=as.character(Sys.time()),color="maroon")
       addTimeLine(timeLine)
 
     }, error=function(e){
@@ -120,31 +145,38 @@ shinyServer(function(input,output, session){
     } else if(length(checked)==0) {
       temp_data <- temp_data
     }
+    
     return(temp_data)
-
   })
   
+  
+  observeEvent(input$preprocess_btn, {
+    
+    
+  })
+  
+
   addTimeLine = function(timeLine){
     output$timeline <- renderUI({
       timelineBlock(
         reversed = F,
-        timelineEnd(color = "danger"),
-        apply(timeLine, 1, FUN = function(i){
+        timelineEnd(color = "gray"),
+        lapply(1:nrow(timeLine), FUN = function(i){
           tagList(
             timelineItem(
               icon = "file-upload",
-              color = "olive",
-              time = timeLine$time,
-              tags$h4(timeLine$step),
-              footer= tagList(
-                tags$p(paste0("File Type : ", timeLine$fType)),
-              )
+              color = timeLine$color[i],
+              time = timeLine$time[i],
+              tags$h4(timeLine$step[i]),
+              footer= timeLine$info[i],
+              
             )
-            ,timelineLabel(timeLine$sample_num, color = "teal")
+            ,timelineLabel(paste0("# of samples : ",timeLine$sample_num[i]), color = "olive")
           )
         }),
         timelineStart(color = "gray")
       )
     })
   } # End of addTimeLine
+
 })
