@@ -118,7 +118,7 @@ shinyServer(function(input,output, session){
       uploaded_data <- dplyr::filter(uploaded_data, Intensity != 0)#4898
 
       info <- paste0("File Type : ", input$file_type,"\n",
-                     "'Unique peptied' == 0 remove\n'Intensity' == 0 remove")
+                     "'Unique peptied' == 0 removed\n'Intensity' == 0 removed")
       timeLine <<- data.frame(step="Data Input",info=info,
                              sample_num=as.numeric(nrow(uploaded_data)),
                              time=as.character(Sys.time()),color="maroon")
