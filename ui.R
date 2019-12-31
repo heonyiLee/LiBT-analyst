@@ -55,24 +55,29 @@ ui <- function(request) {shinyUI(
                          choices = list("LFQ" = "LFQ", "iBAQ" = "iBAQ", "TMT" = "TMT"), 
                          selected = "LFQ"),
             
-            checkboxGroupInput("first_filtering", label="First Filtering (Remove all)", 
+            checkboxGroupInput("first_filtering", label="Filtering Options (Remove all)", 
                                choices = list("Potential contaminant" = "potential", 
                                               "Reverse" = "reverse", 
                                               "Only identified by site" = "identified")),
             actionButton("select_all_filtering_btn", "Select All"),
-            actionButton("deselect_all_filtering_btn", "Deselect All")
-
+            actionButton("deselect_all_filtering_btn", "Deselect All"),
+            tags$hr(),
+            actionButton("file_upload_btn", "Upload file")
           )
         ),
         gradientBox(
-            title = "Grouping Data",
+            title = "Experiment Design",
             width = 12,
             gradientColor = "maroon", 
             boxToolSize = "md", 
             closable = F,
-            footer = ""
+            footer = fluidRow(
+              selectInput("case_group_selection", label="Case samples",
+                          choices=c(),selectize=T, multiple=T),
+              selectInput("control_group_selection", label="Control samples",
+                          choices=c(),selectize=T, multiple=T)
+            )
         ) # End of Upload Data box
-        ,actionButton("file_upload_btn", "Upload file")
       ),
       rightSidebarTabContent(
         id=2,

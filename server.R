@@ -1,5 +1,7 @@
 library(shiny)
 library(shinyjs)
+library(dplyr)
+source("function.R")
 # 2019.12.30
 
 shinyServer(function(input,output, session){
@@ -59,8 +61,23 @@ shinyServer(function(input,output, session){
         render_df
       }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
 
-      print(nrow(render_df))
+      choices <- make_case_samples(render_df)
+      
+      updateSelectInput(session, "case_group_selection",
+                        choices = choices)
+      
     }
+  })
+  
+  
+  observeEvent(input$case_group_selection, {
+    sample_selected <- input$case_group_selection
+    temp_choices <- make_case_samples(filtered_data())
+    
+    temp_choices <- setdiff(temp_choices, sample_selected)
+    
+    updateSelectInput(session, "control_group_selection", 
+                      choices = temp_choices, selected = temp_choices)
   })
   
 
@@ -76,8 +93,8 @@ shinyServer(function(input,output, session){
                                   header = T, fill = T,
                                   sep = "\t") 
       
-      uploaded_data <- dplyr::filter(uploaded_data, Unique.peptides != 0)
-      uploaded_data <- dplyr::filter(uploaded_data, Intensity != 0)
+      uploaded_data <- dplyr::filter(uploaded_data, Unique.peptides != 0) #4903
+      uploaded_data <- dplyr::filter(uploaded_data, Intensity != 0) # 4898
 
       
       timeLine <- data.frame(step="Data Input",fType=input$file_type,
@@ -98,34 +115,10 @@ shinyServer(function(input,output, session){
     temp_data <- uploaded_data()
     checked <- input$first_filtering
     
-    if(length(checked)==1 & checked[1] == "potential") { #4868
-      temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+")
-    } else if(length(checked)==1 & checked[1] == "reverse") { #4868
-      temp_data <- dplyr::filter(temp_data, Reverse != "+")
-    } else if(length(checked)==1 & checked[1] == "identified") { #4901
-      temp_data <- dplyr::filter(temp_data, Only.identified.by.site != "+")
-    } else if(length(checked)==2 & 
-              (checked[1] == "potential" & checked[2] == "reverse")) { #4817
-      temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+" &
-                                   Reverse != "+")
-    } else if(length(checked)==2 & 
-              (checked[1] == "potential" & checked[2] == "identified")) { # 4850
-      temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+" &
-                                   Only.identified.by.site != "+")
-    } else if(length(checked)==2 & 
-              (checked[1] == "reverse" & checked[2] == "identified")) { #4853
-      temp_data <- dplyr::filter(temp_data, Reverse != "+" &
-                                   Only.identified.by.site != "+")
-    } else if(length(checked)==3 & 
-              (checked[1] == "potential" &
-               checked[2] == "reverse" & checked[3] == "identified")) { #4805
-      temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+" &
-                                   Only.identified.by.site != "+" & Reverse != "+")
-    } else if(length(checked)==0) {
-      temp_data <- temp_data
-    }
-    return(temp_data)
+    filter_with_condition(checked, temp_data)
+    
   })
+
   
   
   observeEvent(input$preprocess_btn, {
