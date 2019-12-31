@@ -8,9 +8,12 @@ ui <- function(request) {shinyUI(
   dashboardPagePlus(
     dashboardHeaderPlus(
       enable_rightsidebar = TRUE,
-      rightSidebarIcon = "sliders"
+      rightSidebarIcon = "gears",
+      title = "LiBT-Analyst",
+      titleWidth = 300
     ),
     sidebar = dashboardSidebar(
+      width=300,
       sidebarMenu(
         menuItem("TimeLine", selected = TRUE, icon=icon("history"),
                  tabName = "timeline", uiOutput("timeline"))
@@ -86,7 +89,7 @@ ui <- function(request) {shinyUI(
         gradientBox(
           title = "Transformation",
           width = 12,
-          gradientColor = "teal", 
+          gradientColor = "aqua", 
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(
@@ -98,7 +101,7 @@ ui <- function(request) {shinyUI(
         gradientBox(
           title = "Filter based on Valid Value",
           width = 12,
-          gradientColor = "teal", 
+          gradientColor = "aqua", 
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(
@@ -110,7 +113,7 @@ ui <- function(request) {shinyUI(
         gradientBox(
           title = "Deal with Missing Value",
           width = 12,
-          gradientColor = "teal", 
+          gradientColor = "aqua", 
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(
@@ -123,7 +126,7 @@ ui <- function(request) {shinyUI(
         gradientBox(
           title = "Normalization",
           width = 12,
-          gradientColor = "teal", 
+          gradientColor = "aqua", 
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(
