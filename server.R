@@ -70,14 +70,14 @@ shinyServer(function(input,output, session){
       for(i in 1:length(filter)){
         if(filter[i]=="potential"){
           tmp <- "'Potential contaminant'"
-          info <- paste0(info,tmp," remove\n")
+          info <- paste0(info,tmp," removed\n")
         }
         else if(filter[i]=="reverse"){
           tmp <- "'Reverse'"
-          info <- paste0(info,tmp," remove\n")
+          info <- paste0(info,tmp," removed\n")
         }else{
           tmp <- "'Only identified by site'"
-          info <- paste0(info,tmp," remove\n")
+          info <- paste0(info,tmp," removed\n")
         }
         
       }
@@ -118,7 +118,7 @@ shinyServer(function(input,output, session){
       uploaded_data <- dplyr::filter(uploaded_data, Intensity != 0)#4898
 
       info <- paste0("File Type : ", input$file_type,"\n",
-                     "'Unique peptied' == 0 remove\n'Intensity' == 0 remove")
+                     "'Unique peptied' == 0 remove\n'Intensity' == 0 removed")
       timeLine <<- data.frame(step="Data Input",info=info,
                              sample_num=as.numeric(nrow(uploaded_data)),
                              time=as.character(Sys.time()),color="maroon")
