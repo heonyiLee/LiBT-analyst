@@ -69,17 +69,17 @@ ui <- function(request) {shinyUI(
           )
         ),
         gradientBox(
-            title = "Experiment Design",
-            width = 12,
-            gradientColor = "maroon", 
-            boxToolSize = "md", 
-            closable = F,
-            footer = fluidRow(
-              selectInput("case_group_selection", label="Case samples",
-                          choices=c(),selectize=T, multiple=T),
-              selectInput("control_group_selection", label="Control samples",
-                          choices=c(),selectize=T, multiple=T)
-            )
+          title = "Experiment Design",
+          width = 12,
+          gradientColor = "maroon", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            selectInput("case_group_selection", label="Case samples",
+                        choices=c(),selectize=T, multiple=T),
+            selectInput("control_group_selection", label="Control samples",
+                        choices=c(),selectize=T, multiple=T)
+          )
         ) # End of Upload Data box
       ),
       rightSidebarTabContent(
@@ -146,4 +146,3 @@ ui <- function(request) {shinyUI(
     title = "DemoWEB"
   )
 )}
-  

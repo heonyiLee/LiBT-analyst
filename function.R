@@ -75,5 +75,3 @@ make_case_samples <- function(data) {
   #   
   # }
 }
-
-

@@ -7,7 +7,7 @@ source("function.R")
 shinyServer(function(input,output, session){
   
   options(shiny.maxRequestSize=100*1024^2)
-
+  
   step <- c()
   info <- c()
   sample_num <- c()
@@ -49,7 +49,7 @@ shinyServer(function(input,output, session){
                                selected = c())
     }
   })
- 
+  
   
   observeEvent(input$file_upload_btn, {
     if(is.null(input$first_filtering) | is.null(input$fileBrowser)){
@@ -60,7 +60,7 @@ shinyServer(function(input,output, session){
       output$uploaded_file_header <- DT::renderDataTable({
         render_df
       }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
-
+      
       choices <- make_case_samples(render_df)
       
       updateSelectInput(session, "case_group_selection",
@@ -101,11 +101,11 @@ shinyServer(function(input,output, session){
                       choices = temp_choices, selected = temp_choices)
   })
   
-
+  
   uploaded_data <- reactive({NULL})
   uploaded_data <- eventReactive(input$fileBrowser, {
     req(input$fileBrowser)
-
+    
     if(is.null(input$fileBrowser)){
       return(NULL)
     }
@@ -116,14 +116,14 @@ shinyServer(function(input,output, session){
       
       uploaded_data <- dplyr::filter(uploaded_data, Unique.peptides != 0)#4903
       uploaded_data <- dplyr::filter(uploaded_data, Intensity != 0)#4898
-
+      
       info <- paste0("File Type : ", input$file_type,"\n",
-                     "'Unique peptied' == 0 remove\n'Intensity' == 0 removed")
+                     "'Unique peptied' == 0 removed\n'Intensity' == 0 removed")
       timeLine <<- data.frame(step="Data Input",info=info,
-                             sample_num=as.numeric(nrow(uploaded_data)),
-                             time=as.character(Sys.time()),color="maroon")
+                              sample_num=as.numeric(nrow(uploaded_data)),
+                              time=as.character(Sys.time()),color="maroon")
       addTimeLine(timeLine)
-
+      
     }, error=function(e){
       stop(safeError(e))
     })
@@ -145,7 +145,7 @@ shinyServer(function(input,output, session){
     
   })
   
-
+  
   addTimeLine = function(timeLine){
     output$timeline <- renderUI({
       timelineBlock(
@@ -168,5 +168,5 @@ shinyServer(function(input,output, session){
       )
     })
   } # End of addTimeLine
-
+  
 })
