@@ -93,7 +93,7 @@ shinyServer(function(input,output, session){
   
   observeEvent(input$case_group_selection, {
     sample_selected <- input$case_group_selection
-    temp_choices <- make_case_samples(filtered_data())
+    temp_choices <- make_case_samples(filtered_data(),input$file_type)
     
     temp_choices <- setdiff(temp_choices, sample_selected)
     
