@@ -143,6 +143,6 @@ ui <- function(request) {shinyUI(
         textInput("caption", "Caption", "Data Summary")
       )
     ), # End of rightSidebar
-    title = "DemoWEB"
+    title = "LiBT-Analyst"
   )
 )}
