@@ -1,7 +1,9 @@
 library(shiny)
+library(shinyjs)
 library(shinydashboard)
 library(shinydashboardPlus)
 library(shinyalert)
+library(shinycssloaders)
 
 # 2019.12.30
 ui <- function(request) {shinyUI(
@@ -20,15 +22,17 @@ ui <- function(request) {shinyUI(
       )
     ), # End of dashboardSidebar
     body = dashboardBody(
-      tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css")),
-      tags$head(tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css")),
-      tags$head(tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
+      
+      tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css"),
+                tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css"),
+                tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
+      tags$head(tags$script(src="body.js")),
       box(
         id = "summary_box",
         solidHeader = T,
         width = 11,
         # tableOutput("uploaded_file_header")
-        DT::dataTableOutput("uploaded_file_header")
+        withSpinner(DT::dataTableOutput("uploaded_file_header"))
       ) # End of uploaded file data table
       ,useShinyalert(),
     ), # End of dashboardBody
@@ -42,6 +46,7 @@ ui <- function(request) {shinyUI(
         icon="file-upload",
         
         gradientBox(
+          useShinyjs(),
           title = "Upload Data",
           width = 12,
           gradientColor = "maroon", 
@@ -57,6 +62,10 @@ ui <- function(request) {shinyUI(
             radioButtons("file_type", label="", 
                          choices = list("LFQ" = "LFQ", "iBAQ" = "iBAQ", "TMT" = "TMT"), 
                          selected = "LFQ"),
+            
+            hidden(radioButtons("TMT_normalize", label="Get Normalized TMT data", 
+                         choices = list("YES" = "T", "NO" = "F"), 
+                         selected = "T")),
             
             checkboxGroupInput("first_filtering", label="Filtering Options (Remove all)", 
                                choices = list("Potential contaminant" = "potential", 
