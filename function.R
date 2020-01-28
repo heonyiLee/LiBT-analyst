@@ -1,40 +1,40 @@
-filter_with_condition <- function(checked, temp_data) {
+filter_with_condition <- function(selected, temp_data) {
   
-  if(length(checked)==1 & checked[1] == "potential") { #4844
+  if(length(selected)==1 & selected[1] == "potential") { #4844
     
     temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+")
     
-  } else if(length(checked)==1 & checked[1] == "reverse") { #4844
+  } else if(length(selected)==1 & selected[1] == "reverse") { #4844
     
     temp_data <- dplyr::filter(temp_data, Reverse != "+")
     
-  } else if(length(checked)==1 & checked[1] == "identified") { #4877
+  } else if(length(selected)==1 & selected[1] == "identified") { #4877
     
     temp_data <- dplyr::filter(temp_data, Only.identified.by.site != "+")
     
-  } else if(length(checked)==2 & 
-            (checked[1] == "potential" & checked[2] == "reverse")) { #4793
+  } else if(length(selected)==2 & 
+            (selected[1] == "potential" & selected[2] == "reverse")) { #4793
     
     temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+" &
                                  Reverse != "+")
-  } else if(length(checked)==2 & 
-            (checked[1] == "potential" & checked[2] == "identified")) { # 4826
+  } else if(length(selected)==2 & 
+            (selected[1] == "potential" & selected[2] == "identified")) { # 4826
     
     temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+" &
                                  Only.identified.by.site != "+")
-  } else if(length(checked)==2 & 
-            (checked[1] == "reverse" & checked[2] == "identified")) { #4829
+  } else if(length(selected)==2 & 
+            (selected[1] == "reverse" & selected[2] == "identified")) { #4829
     
     temp_data <- dplyr::filter(temp_data, Reverse != "+" &
                                  Only.identified.by.site != "+")
-  } else if(length(checked)==3 & 
-            (checked[1] == "potential" &
-             checked[2] == "reverse" & checked[3] == "identified")) { #4805
+  } else if(length(selected)==3 & 
+            (selected[1] == "potential" &
+             selected[2] == "reverse" & selected[3] == "identified")) { #4805
     
     temp_data <- dplyr::filter(temp_data, Potential.contaminant != "+" &
                                  Only.identified.by.site != "+" & Reverse != "+")
     
-  } else if(length(checked)==0) {
+  } else if(length(selected)==0) {
     temp_data <- temp_data
   }
   return(temp_data)
@@ -66,14 +66,7 @@ make_case_samples <- function(data) {
   col <- union(col1, col2)
   col <- paste0("Total", col)
   return(col)
-  
-  # col <- foreach(i=1:length(temp), .combine=rbind) %do%{
-  #   if(i %% 2 == 0) {
-  #     t <- temp [i]
-  #   }
-  #   return(col)
-  #   
-  # }
+
 }
 
 

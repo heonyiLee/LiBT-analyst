@@ -63,8 +63,7 @@ shinyServer(function(input,output, session){
 
       choices <- make_case_samples(render_df)
       
-      updateSelectInput(session, "case_group_selection",
-                        choices = choices)
+      updateSelectInput(session, "case_group_selection", choices = choices)
       
       filter <- paste0(as.character(unlist(input$first_filtering)))
       for(i in 1:length(filter)){
@@ -92,14 +91,28 @@ shinyServer(function(input,output, session){
   
   
   observeEvent(input$case_group_selection, {
-    sample_selected <- input$case_group_selection
+    selected_samples <- input$case_group_selection
+    
+    updateSelectInput(session, "case_group_selection", 
+                      label=paste0("Case samples (n=", length(selected_samples), ")"),
+                      choices = choices)
+    
+    
     temp_choices <- make_case_samples(filtered_data())
     
-    temp_choices <- setdiff(temp_choices, sample_selected)
+    
+    
+    temp_choices <- setdiff(temp_choices, selected_samples)
     
     updateSelectInput(session, "control_group_selection", 
+                      label=paste0("Control samples (n=", length(temp_choices), ")"),
                       choices = temp_choices, selected = temp_choices)
   })
+  
+  
+  ############################
+  ##        REACTIVE        ##
+  ############################
   
 
   uploaded_data <- reactive({NULL})
@@ -119,6 +132,7 @@ shinyServer(function(input,output, session){
 
       info <- paste0("File Type : ", input$file_type,"\n",
                      "'Unique peptied' == 0 removed\n'Intensity' == 0 removed")
+      
       timeLine <<- data.frame(step="Data Input",info=info,
                              sample_num=as.numeric(nrow(uploaded_data)),
                              time=as.character(Sys.time()),color="maroon")
@@ -131,13 +145,15 @@ shinyServer(function(input,output, session){
   })
   
   
+  
+  
   filtered_data <- reactive({NULL})
   filtered_data <- eventReactive(input$first_filtering, {
     
     temp_data <- uploaded_data()
-    checked <- input$first_filtering
+    selected_filtering_option <- input$first_filtering
     
-    filter_with_condition(checked, temp_data)
+    filter_with_condition(selected_filtering_option, temp_data)
   })
   
   observeEvent(input$preprocess_btn, {
