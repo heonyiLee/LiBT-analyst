@@ -1,7 +1,9 @@
 library(shiny)
+library(shinyjs)
 library(shinydashboard)
 library(shinydashboardPlus)
 library(shinyalert)
+library(shinycssloaders)
 
 # 2019.12.30
 ui <- function(request) {shinyUI(
@@ -20,16 +22,23 @@ ui <- function(request) {shinyUI(
       )
     ), # End of dashboardSidebar
     body = dashboardBody(
-      tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css")),
-      tags$head(tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css")),
-      tags$head(tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
+      
+      tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css"),
+                tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css"),
+                tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
+      tags$head(tags$script(src="body.js")),
       box(
         id = "summary_box",
         solidHeader = T,
         width = 11,
-        # tableOutput("uploaded_file_header")
-        DT::dataTableOutput("uploaded_file_header")
-      ) # End of uploaded file data table
+        withSpinner(DT::dataTableOutput("uploaded_file_header"))
+      ), # End of uploaded file data table
+      box(
+        id = "preprocessed_box",
+        solidHeader = T,
+        width = 11,
+        withSpinner(DT::dataTableOutput("preprocessed_data_header"))
+      )
       ,useShinyalert(),
     ), # End of dashboardBody
     rightsidebar = rightSidebar(
@@ -37,28 +46,34 @@ ui <- function(request) {shinyUI(
       width = 350,
       background = "dark",
       rightSidebarTabContent(
+        uiOutput("sidebar_tab1"),
         id=1,
         active = T,
         icon="file-upload",
         
         gradientBox(
+          useShinyjs(),
           title = "Upload Data",
           width = 12,
           gradientColor = "maroon", 
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(
+            radioButtons("file_type", label="", 
+                         choices = list("LFQ" = "LFQ", "iBAQ" = "iBAQ", "TMT" = "TMT"), 
+                         selected = "LFQ"),
+            tags$hr(),
+            
             fileInput("fileBrowser", "Choose txt File",
                       multiple = FALSE,
                       accept = c("text/csv",
                                  "text/comma-separated-values,text/plain",
                                  ".csv")),
-            tags$hr(),
-            radioButtons("file_type", label="", 
-                         choices = list("LFQ" = "LFQ", "iBAQ" = "iBAQ", "TMT" = "TMT"), 
-                         selected = "LFQ"),
+            hidden(radioButtons("TMT_input_option", label="Get Normalized TMT data", 
+                         choices = list("YES" = "T", "NO" = "F"), 
+                         selected = "T")),
             
-            checkboxGroupInput("first_filtering", label="Filtering Options (Remove all)", 
+            checkboxGroupInput("nonTMT_input_option", label="Filtering Options (Remove all)", 
                                choices = list("Potential contaminant" = "potential", 
                                               "Reverse" = "reverse", 
                                               "Only identified by site" = "identified")),
@@ -69,20 +84,23 @@ ui <- function(request) {shinyUI(
           )
         ),
         gradientBox(
-            title = "Experiment Design",
-            width = 12,
-            gradientColor = "maroon", 
-            boxToolSize = "md", 
-            closable = F,
-            footer = fluidRow(
-              selectInput("case_group_selection", label="Case samples",
-                          choices=c(),selectize=T, multiple=T),
-              selectInput("control_group_selection", label="Control samples",
-                          choices=c(),selectize=T, multiple=T)
-            )
+          title = "Experiment Design",
+          width = 12,
+          gradientColor = "maroon", 
+          boxToolSize = "md", 
+          closable = F,
+          footer = fluidRow(
+            selectInput("case_group_selection", label="Case samples",
+                        choices=c(),selectize=T, multiple=T),
+            selectInput("control_group_selection", label="Control samples",
+                        choices=c(),selectize=T, multiple=T),
+            tags$hr(),
+            actionButton("exp_design_submit_btn", "Submit")
+          )
         ) # End of Upload Data box
       ),
       rightSidebarTabContent(
+        uiOutput("sidebar_tab2"),
         id=2,
         icon="dna",
         #active = T,
@@ -106,7 +124,7 @@ ui <- function(request) {shinyUI(
           closable = F,
           footer = fluidRow(
             radioButtons("valid_value", label="Choose % of valid value", 
-                         choices = list("30%" = 30, "50%" = 50, "70%"=70, "100%"=100), 
+                         choices = list("30%" = 30, "50%" = 50, "70%"= 70, "100%"=100), 
                          selected = 70)
           )
         ),
@@ -118,9 +136,9 @@ ui <- function(request) {shinyUI(
           closable = F,
           footer = fluidRow(
             radioButtons("imputation", label="Choose Imputation", 
-                         choices = list("Normal distribution" = "nordis", "Constant" = "const", 
-                                        "NaN"="nan", "none"="none"), 
-                         selected = "nordis")
+                         choices = list("Normal distribution" = "normal_distribution", "Constant" = "constant", 
+                                        "NaN"="nan", "None"="none"), 
+                         selected = "normal_dis")
           )
         ),
         gradientBox(
@@ -131,7 +149,8 @@ ui <- function(request) {shinyUI(
           closable = F,
           footer = fluidRow(
             radioButtons("normalization", label="Choose method of normalization", 
-                         choices = list("Width distribution" = "quantile", "none" = "none"), 
+                         choices = list("Width distribution" = "quantile", 
+                                        "Z-score"="zscore", "none" = "none"), 
                          selected = "quantile")
           )
         )
@@ -143,7 +162,6 @@ ui <- function(request) {shinyUI(
         textInput("caption", "Caption", "Data Summary")
       )
     ), # End of rightSidebar
-    title = "DemoWEB"
+    title = "LiBT-Analyst"
   )
 )}
-  
