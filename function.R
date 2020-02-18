@@ -124,8 +124,8 @@ get_main_data_LiB <- function(data) {
 }
 
 get_main_data_T <- function(data,normalization) {
-  rv_db <- read.delim("D:/proteomics/web/uniprot-filtered-organism_Human(9606)_rv_20200114ver.txt")
-  nrv_db <- read.delim("D:/proteomics/web/uniprot-filtered-organism_Human(9606)_nrv_20200114ver.txt")
+  rv_db <- read.delim("./base/uniprot-filtered-organism_Human(9606)_rv_20200114ver.txt")
+  nrv_db <- read.delim("./base/uniprot-filtered-organism_Human(9606)_nrv_20200114ver.txt")
 
   cn <- colnames(data)
   data$Accession <- as.character(data$Accession)
