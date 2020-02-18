@@ -1,6 +1,7 @@
 library(dplyr)
 library(readr)
 library(stringr)
+library(DEP)
 source("function.R")
 # 2019.12.30
 
@@ -33,11 +34,24 @@ shinyServer(function(input,output, session){
   
   observeEvent(input$fileBrowser, {
     temp <- file_input()
+    
     if(is.null(temp)){
       shinyalert("Check your file type!", type="error", timer = 10000,
                               closeOnClickOutside = T, closeOnEsc = T)
       reset("fileBrowser")
+    } else {
+      if(input$file_type=="TMT"){
+        state <- colnames(temp)[grep("normalized", colnames(temp), ignore.case = T)]
+        updateRadioButtons(session, "TMT_input_option", label="Get Normalized TMT data", 
+                           choices = list("YES" = "T", "NO" = "F"), selected="F")
+        if(length(state)==0){
+          shinyjs::disable("TMT_input_option")
+          print(input$TMT_input_option)
+        }
+      }
+      
     }
+    
   })
   
   
@@ -186,13 +200,17 @@ shinyServer(function(input,output, session){
     temp_df <- read.table(input$fileBrowser$datapath,
                           header = T, fill = T,
                           sep = "\t")
+    if(nrow(temp_df) < 1) {
+      temp_df <- read.table(input$fileBrowser$datapath,
+                            header = T, fill = T,
+                            sep = ",")
+    }
     state <- file_input_test(temp_df, input$file_type)
     if(length(state)==0){
-      temp_df <- NULL
+      return(NULL)
     } else {
-      temp_df <- temp_df
+      return(temp_df)
     }
-    return(temp_df)
   })
 
   

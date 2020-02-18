@@ -71,7 +71,7 @@ ui <- function(request) {shinyUI(
                                  ".csv")),
             hidden(radioButtons("TMT_input_option", label="Get Normalized TMT data", 
                          choices = list("YES" = "T", "NO" = "F"), 
-                         selected = "T")),
+                         selected = "F")),
             
             checkboxGroupInput("nonTMT_input_option", label="Filtering Options (Remove all)", 
                                choices = list("Potential contaminant" = "potential", 

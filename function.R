@@ -1,15 +1,10 @@
 file_input_test <- function(file, file_type) {
-  left_cols <- setdiff(c("LFQ", "iBAQ", "TMT"), file_type)
-  left_cols <- paste0(left_cols, collapse="|")
-  
-  cols <- colnames(file)[grep("LFQ|iBAQ|TMT", colnames(file))]
-  
-  temp <- cols[grep(left_cols, cols)]
-  if(length(temp) >0){
-    cols <- NULL
+  if(file_type=="TMT"){
+    cols <- colnames(file)[grep("Abundance", colnames(file))]
   } else {
-    cols <- cols
+    cols <- colnames(file)[grep(file_type, colnames(file))]
   }
+  
   return(cols)
 }
 
@@ -35,23 +30,23 @@ filter_with_option <- function(option, data) {
             (option[1] == "potential" & option[2] == "reverse")) { #4793
     
     data <- dplyr::filter(data, Potential.contaminant != "+" &
-                                 Reverse != "+")
+                            Reverse != "+")
   } else if(length(option)==2 & 
             (option[1] == "potential" & option[2] == "identified")) { # 4826
     
     data <- dplyr::filter(data, Potential.contaminant != "+" &
-                                 Only.identified.by.site != "+")
+                            Only.identified.by.site != "+")
   } else if(length(option)==2 & 
             (option[1] == "reverse" & option[2] == "identified")) { #4829
     
     data <- dplyr::filter(data, Reverse != "+" &
-                                 Only.identified.by.site != "+")
+                            Only.identified.by.site != "+")
   } else if(length(option)==3 & 
             (option[1] == "potential" &
              option[2] == "reverse" & option[3] == "identified")) { #4805
     
     data <- dplyr::filter(data, Potential.contaminant != "+" &
-                                 Only.identified.by.site != "+" & Reverse != "+")
+                            Only.identified.by.site != "+" & Reverse != "+")
     
   } else if(length(option)==0) {
     data <- data
@@ -64,7 +59,7 @@ filter_with_option <- function(option, data) {
 get_main_data_LiB <- function(data, file_type) {
   rv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_rv_20200114ver.txt")
   nrv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_nrv_20200114ver.txt")
-
+  
   ProteinID <- as.character(data$Majority.protein.IDs)
   Protein_count <- as.character(data$Peptide.counts..all.)
   GeneName <- as.character(data$Gene.names)
@@ -154,7 +149,7 @@ get_main_data_LiB <- function(data, file_type) {
 get_main_data_T <- function(data,normalization) {
   rv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_rv_20200114ver.txt")
   nrv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_nrv_20200114ver.txt")
-
+  
   cn <- colnames(data)
   
   
@@ -166,7 +161,7 @@ get_main_data_T <- function(data,normalization) {
   data <- data[,-rm_pos]
   cn <- cn[-rm_pos]
   main_pos <- grep("Accession",cn)
-
+  
   TMT_marker <- c("126","127C","127N","128C","128N","129C","129N","130C","130N","131")
   for(i in 1:length(TMT_marker)){
     main_pos <- c(main_pos,grep(TMT_marker[i],cn))  
@@ -175,7 +170,7 @@ get_main_data_T <- function(data,normalization) {
   
   main_data <- data[,main_pos]
   cn <- colnames(main_data)
-
+  
   if(normalization == "T"){
     nor_pos <- grep("Normalized",cn)
     main_pos <- c(1,nor_pos)
@@ -186,7 +181,7 @@ get_main_data_T <- function(data,normalization) {
   }
   
   main_data <- na.omit(main_data)
-
+  
   acc <- main_data$Accession
   id_pos <- grep("-",acc)
   acc_id <- acc[id_pos]
@@ -199,7 +194,7 @@ get_main_data_T <- function(data,normalization) {
   }
   acc[id_pos] <- acc_new
   main_data$Entry <- acc
-
+  
   pt_data <- merge(main_data,rv_db,by="Entry",all.x = T)
   pt_rv <- pt_data[!is.na(pt_data$Entry.name),]
   pt_rv <- pt_rv[,c(2,18,3:12)]
@@ -213,7 +208,7 @@ get_main_data_T <- function(data,normalization) {
   
   pt_nrv <- pt_nrv[!is.na(pt_nrv$Entry.name),]
   pt_nrv <- pt_nrv[,c(2,18,3:12)]
-
+  
   main_df <- rbind(pt_rv,pt_nrv,pt_none)
   return(main_df)
 }
@@ -295,7 +290,7 @@ make_case_samples_diffT <- function(data,normalization) {
   main_data <- na.omit(main_data)
   main_data <- main_data[,c(2:ncol(main_data))]
   temp_col <- colnames(main_data)
-
+  
   temp <- c()
   for(j in 1:length(TMT_marker)){
     col_pos <- str_locate(temp_col[grep(TMT_marker[j],temp_col)],TMT_marker[j]) 
@@ -303,7 +298,7 @@ make_case_samples_diffT <- function(data,normalization) {
   }
   
   col <- data.frame(id=temp)
-
+  
   col1 <- col[1:(nrow(col)/2),]
   col2 <- col[((nrow(col)/2)+1):nrow(col),]
   
@@ -341,7 +336,7 @@ use_valid_option <- function(data, case, control, valid_num) {
   return(data)
 }
 
-use_imputation_option <- function(data, samples) {
+use_imputation_option <- function(data, options) {
   for(i in 1:nrow(data)) {
     data[i,c(samples)] <- lapply(c(samples), function(x) {
       
@@ -358,7 +353,7 @@ get_preprocessed_data <- function(data, option, case, control) {
   valid_option <- option[[1]][2]
   imputation_option <- option[[1]][3]
   normalization_option <- option[[1]][4]
-
+  
   if(log_option=="log2") {
     temp_df <- use_transformation_option(temp_df, samples)
   } else {
@@ -366,10 +361,19 @@ get_preprocessed_data <- function(data, option, case, control) {
   }
   
   temp_df <- switch(valid_option,
-         "30" = use_valid_option(temp_df, case, control, 0.3),
-         "50" = use_valid_option(temp_df, case, control, 0.5),
-         "70" = use_valid_option(temp_df, case, control, 0.7),
-         "100" = use_valid_option(temp_df, case, control, 1))
+                    "30" = use_valid_option(temp_df, case, control, 0.3),
+                    "50" = use_valid_option(temp_df, case, control, 0.5),
+                    "70" = use_valid_option(temp_df, case, control, 0.7),
+                    "100" = use_valid_option(temp_df, case, control, 1))
+  
+  temp_df <- switch(imputation_option,
+                    "normal_distribution" = use_imputation_option(temp_df, "normal_distribution"),
+                    "constant" = use_imputation_option(temp_df, "constant"),
+                    "nan" = use_imputation_option(temp_df, "nan"),
+                    "none" = use_imputation_option(temp_df, "none"))
+  
+  # list("Normal distribution" = "normal_distribution", "Constant" = "constant", 
+       # "NaN"="nan", "None"="none")
   
   # temp_df <- switch(normalization_option,
   #                   "quantile" = use_imputation_option(),
@@ -380,4 +384,21 @@ get_preprocessed_data <- function(data, option, case, control) {
   
   return(temp_df)
 }
+# case <- c("LFQ.intensity.Total_309B", "LFQ.intensity.Total_445B", "LFQ.intensity.Total_555B",
+# "LFQ.intensity.Total_588B", "LFQ.intensity.Total_636B", "LFQ.intensity.Total_667B",
+# "LFQ.intensity.Total_764B", "LFQ.intensity.Total_741B", "LFQ.intensity.Total_876B",
+# "LFQ.intensity.Total_883B")
+# control <- c("LFQ.intensity.Total_309M", "LFQ.intensity.Total_445M", "LFQ.intensity.Total_555M",
+# "LFQ.intensity.Total_588M", "LFQ.intensity.Total_636M", "LFQ.intensity.Total_667M",
+# "LFQ.intensity.Total_741M", "LFQ.intensity.Total_764M", "LFQ.intensity.Total_876M",
+# "LFQ.intensity.Total_883M")
+
+# data <- lfq
+# data$Gene.names %>% duplicated() %>% any()
+# data %>% group_by(Gene.names) %>% summarise(frequency = n()) %>% 
+#   arrange(desc(frequency)) %>% filter(frequency > 1)
+# data <- make_unique(data, "Gene.names", "Protein.IDs", delim=";")
+# 
+# cols <- grep("LFQ.", colnames(data))
+# data_se <- make_se_parse(data, cols)
 
