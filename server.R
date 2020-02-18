@@ -1,8 +1,8 @@
 library(dplyr)
 library(readr)
 library(stringr)
+library(limma)
 source("function.R")
-# 2019.12.30
 
 shinyServer(function(input,output, session){
   
@@ -72,8 +72,6 @@ shinyServer(function(input,output, session){
     }
   })
 
-  
-  
   observeEvent(input$file_upload_btn, {
     if((is.null(input$fileBrowser) || 
        is.null(input$nonTMT_input_option)) && length(input$TMT_input_option)<0){
@@ -217,7 +215,7 @@ shinyServer(function(input,output, session){
     
     file_type <- input$file_type
     if(file_type=="TMT"){
-      if(input$TMT_input_option=="T"){
+      if(input$TMT_input_option=="F" || is.null(input$TMT_input_option)){
         samples <- make_case_samples_diffT(df, input$TMT_input_option)
       } else {
         samples <- make_case_samples_T(df)
