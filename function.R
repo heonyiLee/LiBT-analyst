@@ -169,17 +169,15 @@ get_main_data_T <- function(data,normalization) {
   main_data <- data[,main_pos]
   cn <- colnames(main_data)
 
-  check.nor <- grep("normalized", cn, ignore.case = T)
-  if(length(check.nor) != 0){
-    if(normalization == "F"){
-      nor_pos <- grep("Normalized",cn)
-      main_data <- main_data[,-nor_pos]
-    } else{
-      nor_pos <- grep("Normalized",cn)
-      main_pos <- c(1,nor_pos)
-      main_data <- main_data[,main_pos]
-    }
-    main_data <- na.omit(main_data)
+  if(normalization == "T"){
+    nor_pos <- grep("Normalized",cn)
+    main_data <- main_data[,-nor_pos]
+  } else{
+    origin_pos <- grep("Abundance", cn)
+    nor_pos <- grep("Normalized",cn)
+    nor_pos <- setdiff(origin_pos, nor_pos)
+    main_pos <- c(1,nor_pos)
+    main_data <- main_data[,main_pos]
   }
   
   acc <- main_data$Accession
