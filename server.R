@@ -197,15 +197,22 @@ shinyServer(function(input,output, session){
     if(is.null(input$fileBrowser)){
       return(NULL)
     }
+    temp_df <- readLines(input$fileBrowser$datapath, n=1)
+    if(grepl(" ", temp_df)){
+      sep <- c(" ")
+    } else if(grepl("\t", temp_df)) {
+      sep <- c("\t")
+    } else if(grepl(";", temp_df)) {
+      sep <- c(";")
+    } else if(grepl(",", temp_df)) {
+      sep <- c(",")
+    } 
+    
     temp_df <- read.table(input$fileBrowser$datapath,
                           header = T, fill = T,
-                          sep = "\t")
-    if(nrow(temp_df) < 1) {
-      temp_df <- read.table(input$fileBrowser$datapath,
-                            header = T, fill = T,
-                            sep = ",")
-    }
+                          sep = sep)
     state <- file_input_test(temp_df, input$file_type)
+    print(ncol(temp_df))
     if(length(state)==0){
       return(NULL)
     } else {
@@ -219,8 +226,10 @@ shinyServer(function(input,output, session){
   main_data <- eventReactive(input$file_upload_btn, {
     temp_df <- file_input()
     
+    
     file_type <- input$file_type
     if(file_type=="TMT"){
+      print(input$TMT_input_option)
       temp_df <- get_main_data_T(temp_df,input$TMT_input_option)
     } else{
       checked_option <- input$nonTMT_input_option

@@ -173,11 +173,13 @@ get_main_data_T <- function(data,normalization) {
   
   if(normalization == "T"){
     nor_pos <- grep("Normalized",cn)
+    main_data <- main_data[,-nor_pos]
+  } else{
+    origin_pos <- grep("Abundance", cn)
+    nor_pos <- grep("Normalized",cn)
+    nor_pos <- setdiff(origin_pos, nor_pos)
     main_pos <- c(1,nor_pos)
     main_data <- main_data[,main_pos]
-  } else{
-    nor_pos <- grep("Normalized",cn)
-    main_data <- main_data[,-nor_pos]
   }
   
   main_data <- na.omit(main_data)
