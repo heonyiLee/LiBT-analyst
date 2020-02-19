@@ -1,7 +1,6 @@
 library(dplyr)
 library(readr)
 library(stringr)
-library(limma)
 library(DEP)
 
 source("function.R")
