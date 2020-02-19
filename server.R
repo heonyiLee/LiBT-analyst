@@ -253,7 +253,7 @@ shinyServer(function(input,output, session){
         samples <- make_case_samples_T(df)
       }
     } else{
-      samples <- make_case_samples_LiB(df)
+      samples <- make_case_samples_LiB(df, input$file_type)
     }
     return(samples)
   })

@@ -142,7 +142,23 @@ get_main_data_LiB <- function(data, file_type) {
   
   main_df <- cbind(ProteinID,GeneName,main,Unique_peptides,Sequence_coverage)
   
-  return(main_df)
+  isDup_Gene <- main_df$GeneName %>% duplicated() %>% any()
+  if(isDup_Gene==T){
+    print("true")
+    data_unique <- make_unique(main_df, "GeneName", "ProteinID")
+  } else{
+    print("false")
+    data_col <- colnames(data)
+    data_pos <- which("ProteinID"==data_col | "GeneName"==data_col)
+    colnames(data)[data_pos] <- c("ID","name")
+    data_unique <- data
+  }
+  
+  isDup_name <- data_unique$name %>% duplicated() %>% any()
+  if(isDup_name==F){
+    data_unique <- data.frame(ID=data_unique$ID,name=data_unique$name,data_unique[,-c(1:2)])
+    return(data_unique)
+  } 
 }
 
 
@@ -234,7 +250,7 @@ get_main_data_T <- function(data,normalization) {
 }
 
 
-make_case_samples_LiB <- function(data) {
+make_case_samples_LiB <- function(data,file_type) {
   
   # file_type <- paste(file_type, ".")
   temp_col <- colnames(data)
@@ -368,6 +384,11 @@ make_summarizedData <- function(main,file_type){
   print(file_type)
   if(file_type == "TMT"){
     data_col <- grep("Sample",colnames(main))
+  } 
+  else if(file_type == "LFQ"){
+    data_col <- grep("LFQ",colnames(main))
+  } else{
+    data_col <- grep("iBAQ",colnames(main))
   }
   summary_data <- make_se_parse(main,data_col)
   return(summary_data)
@@ -387,7 +408,7 @@ make_expDesignData <- function(case,ctrl) {
     ctrl_label <- c(ctrl_label,ctrl_list[[m]][1])
   }
 
-  label <- c(case_label,case_label)
+  label <- c(case_label,ctrl_label)
   
   condition <- c()
   condition[1:length(case)] <- c("case")
@@ -402,6 +423,7 @@ make_expDesignData <- function(case,ctrl) {
   for(j in 1:length(ctrl)){
     replicate_ctrl[j] <- j
   }
+  
   replicate <- c(replicate_case,replicate_ctrl)
   
   exp_design <- data.frame(label=label, condition=condition, replicate=replicate)
@@ -443,8 +465,6 @@ get_preprocessed_data <- function(data, option, case, control) {
   #                   "quantile" = use_imputation_option(),
   #                   "zscore" = use_imputation_option(),
   #                   "none" = use_imputation_option())
-  
-  
   
   return(temp_df)
 }
