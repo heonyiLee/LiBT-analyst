@@ -9,6 +9,7 @@ file_input_test <- function(file, file_type) {
 }
 
 
+
 filter_with_option <- function(option, data) {
   data <- dplyr::filter(data, Peptides != 0)#4903
   data <- dplyr::filter(data, Intensity != 0)#4898
@@ -140,6 +141,7 @@ get_main_data_LiB <- function(data, file_type) {
   Sequence_coverage <- data$Sequence.coverage....
   
   main_df <- cbind(ProteinID,GeneName,main,Unique_peptides,Sequence_coverage)
+  
   return(main_df)
 }
 
@@ -150,7 +152,8 @@ get_main_data_T <- function(data,normalization) {
   nrv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_nrv_20200114ver.txt")
   
   cn <- colnames(data)
-
+  
+  
   data$Accession <- as.character(data$Accession)
   data_class <- sapply(data,class)
   rm_pos <- grep("factor",data_class) 
@@ -168,7 +171,7 @@ get_main_data_T <- function(data,normalization) {
   
   main_data <- data[,main_pos]
   cn <- colnames(main_data)
-
+  
   if(normalization == "T"){
     nor_pos <- grep("Normalized",cn)
     main_data <- main_data[,-nor_pos]
@@ -179,6 +182,8 @@ get_main_data_T <- function(data,normalization) {
     main_pos <- c(1,nor_pos)
     main_data <- main_data[,main_pos]
   }
+  
+  main_data <- na.omit(main_data)
   
   acc <- main_data$Accession
   id_pos <- grep("-",acc)
@@ -208,7 +213,24 @@ get_main_data_T <- function(data,normalization) {
   pt_nrv <- pt_nrv[,c(2,18,3:12)]
   
   main_df <- rbind(pt_rv,pt_nrv,pt_none)
-  return(main_df)
+  
+  isDup_Gene <- main_df$Gene.symbol %>% duplicated() %>% any()
+  if(isDup_Gene==T){
+    print("true")
+    data_unique <- make_unique(main_df, "Gene.symbol", "Accession")
+  } else{
+    print("false")
+    data_col <- colnames(data)
+    data_pos <- which("Accession"==data_col | "Gene.symbol"==data_col)
+    colnames(data)[data_pos] <- c("ID","name")
+    data_unique <- data
+  }
+  
+  isDup_name <- data_unique$name %>% duplicated() %>% any()
+  if(isDup_name==F){
+    data_unique <- data.frame(ID=data_unique$ID,name=data_unique$name,data_unique[,-c(1:2)])
+    return(data_unique)
+  } 
 }
 
 
@@ -342,6 +364,50 @@ use_imputation_option <- function(data, options) {
   }
 } 
 
+make_summarizedData <- function(main,file_type){
+  print(file_type)
+  if(file_type == "TMT"){
+    data_col <- grep("Sample",colnames(main))
+  }
+  summary_data <- make_se_parse(main,data_col)
+  return(summary_data)
+}
+
+make_expDesignData <- function(case,ctrl) {
+  case_list <- strsplit(as.character(case), split = '.', fixed = TRUE)
+  ctrl_list <- strsplit(as.character(ctrl), split = '.', fixed = TRUE)
+  
+  case_label <- c()
+  for(n in 1:length(case_list)){
+    case_label <- c(case_label,case_list[[n]][1])
+  }
+  
+  ctrl_label <- c()
+  for(m in 1:length(ctrl_list)){
+    ctrl_label <- c(ctrl_label,ctrl_list[[m]][1])
+  }
+
+  label <- c(case_label,case_label)
+  
+  condition <- c()
+  condition[1:length(case)] <- c("case")
+  condition[(length(case)+1):(length(case)+length(ctrl))] <- c("ctrl")
+  
+  replicate_case <- c()
+  for(i in 1:length(case)){
+    replicate_case[i] <- i
+  }
+  
+  replicate_ctrl <- c()
+  for(j in 1:length(ctrl)){
+    replicate_ctrl[j] <- j
+  }
+  replicate <- c(replicate_case,replicate_ctrl)
+  
+  exp_design <- data.frame(label=label, condition=condition, replicate=replicate)
+  return(exp_design)
+}
+
 
 get_preprocessed_data <- function(data, option, case, control) {
   temp_df <- data
@@ -371,14 +437,14 @@ get_preprocessed_data <- function(data, option, case, control) {
                     "none" = use_imputation_option(temp_df, "none"))
   
   # list("Normal distribution" = "normal_distribution", "Constant" = "constant", 
-       # "NaN"="nan", "None"="none")
+  # "NaN"="nan", "None"="none")
   
   # temp_df <- switch(normalization_option,
   #                   "quantile" = use_imputation_option(),
   #                   "zscore" = use_imputation_option(),
   #                   "none" = use_imputation_option())
   
-  temp_df <- use_normalization_option(temp_df, )
+  
   
   return(temp_df)
 }

@@ -2,8 +2,8 @@ library(dplyr)
 library(readr)
 library(stringr)
 library(DEP)
-
 source("function.R")
+# 2019.12.30
 
 shinyServer(function(input,output, session){
   
@@ -37,7 +37,7 @@ shinyServer(function(input,output, session){
     
     if(is.null(temp)){
       shinyalert("Check your file type!", type="error", timer = 10000,
-                              closeOnClickOutside = T, closeOnEsc = T)
+                 closeOnClickOutside = T, closeOnEsc = T)
       reset("fileBrowser")
     } else {
       if(input$file_type=="TMT"){
@@ -85,10 +85,12 @@ shinyServer(function(input,output, session){
                                selected = c())
     }
   })
-
+  
+  
+  
   observeEvent(input$file_upload_btn, {
     if((is.null(input$fileBrowser) || 
-       is.null(input$nonTMT_input_option)) && length(input$TMT_input_option)<0){
+        is.null(input$nonTMT_input_option)) && length(input$TMT_input_option)<0){
       shinyalert("Choose option!", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
     } else {
@@ -159,6 +161,9 @@ shinyServer(function(input,output, session){
     timeLine <- rbind(timeLine,newTL)
     addTimeLine(timeLine)
     
+    summarize_data <- summarized_Data()
+    exp_DesignData <- exp_designData()
+    print(exp_DesignData)
     # output$sidebar_tab2 <- renderUI({
     #   
     # })
@@ -185,9 +190,9 @@ shinyServer(function(input,output, session){
     addTimeLine(timeLine)
   })
   
-
- 
-### LOAD DATA
+  
+  
+  ### LOAD DATA
   file_input <- reactive({NULL})
   file_input <- eventReactive(input$fileBrowser, {
     req(input$fileBrowser)
@@ -196,15 +201,15 @@ shinyServer(function(input,output, session){
       return(NULL)
     }
     temp_df <- readLines(input$fileBrowser$datapath, n=1)
-    if(grepl(" ", temp_df)){
-      sep <- c(" ")
-    } else if(grepl("\t", temp_df)) {
+    if(grepl("\t", temp_df)){
       sep <- c("\t")
     } else if(grepl(";", temp_df)) {
       sep <- c(";")
     } else if(grepl(",", temp_df)) {
       sep <- c(",")
-    } 
+    } else {
+      sep <- c(" ")
+    }
     
     temp_df <- read.table(input$fileBrowser$datapath,
                           header = T, fill = T,
@@ -217,9 +222,9 @@ shinyServer(function(input,output, session){
       return(temp_df)
     }
   })
-
   
-
+  
+  
   main_data <- reactive({NULL})
   main_data <- eventReactive(input$file_upload_btn, {
     temp_df <- file_input()
@@ -242,7 +247,7 @@ shinyServer(function(input,output, session){
     
     file_type <- input$file_type
     if(file_type=="TMT"){
-      if(input$TMT_input_option=="F" || is.null(input$TMT_input_option)){
+      if(input$TMT_input_option=="T"){
         samples <- make_case_samples_diffT(df, input$TMT_input_option)
       } else {
         samples <- make_case_samples_T(df)
@@ -265,7 +270,24 @@ shinyServer(function(input,output, session){
     return(control_samples)
   })
   
-
+  summarized_Data <- reactive({
+    main <- main_data()
+    file_type <- input$file_type
+    print(file_type)
+    summary <- make_summarizedData(main,file_type)
+    return(summary)
+  })
+  
+  exp_designData <- reactive({
+    case <- case_samples()
+    print(case)
+    ctrl <- control_samples()
+    print(ctrl)
+    exp_design <- make_expDesignData(case,ctrl)
+    return(exp_design)
+  })
+  
+  
   preprocessed_data <- eventReactive(input$preprocess_btn, {
     transformation_item <- input$transformation
     filter_item <- input$valid_value
@@ -283,7 +305,7 @@ shinyServer(function(input,output, session){
     return(temp_df)
   })
   
-
+  
   addTimeLine <-  function(timeLine){
     output$timeline <- renderUI({
       timelineBlock(
