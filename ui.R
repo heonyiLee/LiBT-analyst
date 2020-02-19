@@ -33,11 +33,18 @@ ui <- function(request) {shinyUI(
         width = 11,
         withSpinner(DT::dataTableOutput("uploaded_file_header"))
       ), # End of uploaded file data table
+      # box(
+      #   id = "preprocessed_box",
+      #   solidHeader = T,
+      #   width = 11,
+      #   withSpinner(DT::dataTableOutput("preprocessed_data_header"))
+      # ),
       box(
-        id = "preprocessed_box",
+        id = "frequency_plot_box",
         solidHeader = T,
         width = 11,
-        withSpinner(DT::dataTableOutput("preprocessed_data_header"))
+        plotOutput("frequency_plot"),
+        downloadButton("download_frequency_svg", "Save_svg")
       )
       ,useShinyalert(),
     ), # End of dashboardBody
@@ -70,8 +77,8 @@ ui <- function(request) {shinyUI(
                                  "text/comma-separated-values,text/plain",
                                  ".csv")),
             hidden(radioButtons("TMT_input_option", label="Get Normalized TMT data", 
-                         choices = list("YES" = "T", "NO" = "F"), 
-                         selected = "F")),
+                                choices = list("YES" = "T", "NO" = "F"), 
+                                selected = "F")),
             
             checkboxGroupInput("nonTMT_input_option", label="Filtering Options (Remove all)", 
                                choices = list("Potential contaminant" = "potential", 

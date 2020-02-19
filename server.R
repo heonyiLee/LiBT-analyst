@@ -37,7 +37,7 @@ shinyServer(function(input,output, session){
     
     if(is.null(temp)){
       shinyalert("Check your file type!", type="error", timer = 10000,
-                              closeOnClickOutside = T, closeOnEsc = T)
+                 closeOnClickOutside = T, closeOnEsc = T)
       reset("fileBrowser")
     } else {
       if(input$file_type=="TMT"){
@@ -85,12 +85,12 @@ shinyServer(function(input,output, session){
                                selected = c())
     }
   })
-
+  
   
   
   observeEvent(input$file_upload_btn, {
     if((is.null(input$fileBrowser) || 
-       is.null(input$nonTMT_input_option)) && length(input$TMT_input_option)<0){
+        is.null(input$nonTMT_input_option)) && length(input$TMT_input_option)<0){
       shinyalert("Choose option!", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
     } else {
@@ -169,27 +169,40 @@ shinyServer(function(input,output, session){
   })
   
   observeEvent(input$preprocess_btn, {
-    temp_df <- preprocessed_data()
-    output$preprocessed_data_header <- DT::renderDataTable({
-      temp_df}, 
-      options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
+    # temp_df <- preprocessed_data()
+    # output$preprocessed_data_header <- DT::renderDataTable({
+    #   temp_df}, 
+    #   options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
+    # 
+    # tmp <- paste0("Transformation : ", str_to_title(input$transformation),"\n",
+    #               "Valid value : ", paste0(input$valid_value,"%"), "\n",
+    #               "Imputation : " , str_to_title(input$imputation), "\n",
+    #               "Normalization : ", str_to_title(input$normalization))
+    # info <- paste0(info,tmp,"\n")
+    # newTL <- data.frame(step="Preprocessing",
+    #                     info=info,
+    #                     sample_num=as.numeric(nrow(temp_df)),
+    #                     time=as.character(Sys.time()),color="maroon")
+    # timeLine <- rbind(timeLine,newTL)
+    # addTimeLine(timeLine)
     
-    tmp <- paste0("Transformation : ", str_to_title(input$transformation),"\n",
-                  "Valid value : ", paste0(input$valid_value,"%"), "\n",
-                  "Imputation : " , str_to_title(input$imputation), "\n",
-                  "Normalization : ", str_to_title(input$normalization))
-    info <- paste0(info,tmp,"\n")
-    newTL <- data.frame(step="Preprocessing",
-                        info=info,
-                        sample_num=as.numeric(nrow(temp_df)),
-                        time=as.character(Sys.time()),color="maroon")
-    timeLine <- rbind(timeLine,newTL)
-    addTimeLine(timeLine)
+    output$frequency_plot <- renderPlot({
+      preprocessed_data()
+    })
   })
   
-
- 
-### LOAD DATA
+  output$download_frequency_svg <- downloadHandler(
+    filename = function() {"frequency_plot.png"},
+    content = function(file) {
+      png(file)
+      print(preprocessed_data())
+      dev.off()
+    }
+  )
+  
+  
+  
+  ### LOAD DATA
   file_input <- reactive({NULL})
   file_input <- eventReactive(input$fileBrowser, {
     req(input$fileBrowser)
@@ -198,15 +211,15 @@ shinyServer(function(input,output, session){
       return(NULL)
     }
     temp_df <- readLines(input$fileBrowser$datapath, n=1)
-    if(grepl(" ", temp_df)){
-      sep <- c(" ")
-    } else if(grepl("\t", temp_df)) {
+    if(grepl("\t", temp_df)){
       sep <- c("\t")
     } else if(grepl(";", temp_df)) {
       sep <- c(";")
     } else if(grepl(",", temp_df)) {
       sep <- c(",")
-    } 
+    } else {
+      sep <- c(" ")
+    }
     
     temp_df <- read.table(input$fileBrowser$datapath,
                           header = T, fill = T,
@@ -219,9 +232,9 @@ shinyServer(function(input,output, session){
       return(temp_df)
     }
   })
-
   
-
+  
+  
   main_data <- reactive({NULL})
   main_data <- eventReactive(input$file_upload_btn, {
     temp_df <- file_input()
@@ -267,8 +280,9 @@ shinyServer(function(input,output, session){
     return(control_samples)
   })
   
-
+  
   preprocessed_data <- eventReactive(input$preprocess_btn, {
+    file_type <- input$file_type
     transformation_item <- input$transformation
     filter_item <- input$valid_value
     imputation_item <- input$imputation
@@ -281,11 +295,13 @@ shinyServer(function(input,output, session){
     preprocessing_option <- list(c(transformation_item, filter_item,
                                    imputation_item, normalization_item))
     
-    temp_df <- get_preprocessed_data(temp_df, preprocessing_option, case_samples, control_samples)
-    return(temp_df)
+    temp_df <- get_preprocessed_data(file_type, temp_df, 
+                                     preprocessing_option, case_samples, control_samples)
+    plot <- DEP::plot_frequency(temp_df)
+    return(plot)
   })
   
-
+  
   addTimeLine <-  function(timeLine){
     output$timeline <- renderUI({
       timelineBlock(
