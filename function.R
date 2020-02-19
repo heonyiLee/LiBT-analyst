@@ -154,8 +154,8 @@ get_main_data_LiB <- function(data, file_type) {
     data_unique <- data
   }
   
-  isDup_name <- data_unique$name %>% duplicated() %>% any()
-  if(isDup_name==F){
+  isDup_name <- data$name %>% duplicated() %>% any()
+  if(isDup_name == F){
     data_unique <- data.frame(ID=data_unique$ID,name=data_unique$name,data_unique[,-c(1:2)])
     return(data_unique)
   } 
@@ -229,7 +229,8 @@ get_main_data_T <- function(data,normalization) {
   pt_nrv <- pt_nrv[,c(2,18,3:12)]
   
   main_df <- rbind(pt_rv,pt_nrv,pt_none)
-  
+
+    
   isDup_Gene <- main_df$Gene.symbol %>% duplicated() %>% any()
   if(isDup_Gene==T){
     print("true")
@@ -242,9 +243,9 @@ get_main_data_T <- function(data,normalization) {
     data_unique <- data
   }
   
-  isDup_name <- data_unique$name %>% duplicated() %>% any()
+  isDup_name <- data$name %>% duplicated() %>% any()
   if(isDup_name==F){
-    data_unique <- data.frame(ID=data_unique$ID,name=data_unique$name,data_unique[,-c(1:2)])
+    data_unique <- data.frame(ID=data_unique$ID,name=data_unique$name,data_unique[,-c(1:2,(ncol(data_unique)-1):ncol(data_unique))])
     return(data_unique)
   } 
 }
@@ -277,7 +278,7 @@ make_case_samples_T <- function(data) {
   TMT_marker <- c("126","127C","127N","128C","128N","129C","129N","130C","130N","131")
   for(i in 1:length(TMT_marker)){
     col_pos <- str_locate(temp_col[grep(TMT_marker[i],temp_col)],TMT_marker[i]) 
-    temp <- c(temp,substr(temp_col[i],col_pos[1,1],nchar(temp_col)))
+    temp <- c(temp,substr(temp_col[i],col_pos[1,1],(nchar(temp_col)+1)))
   }
   
   col <- data.frame(id=temp)
@@ -330,7 +331,7 @@ make_case_samples_diffT <- function(data,normalization) {
   temp <- c()
   for(j in 1:length(TMT_marker)){
     col_pos <- str_locate(temp_col[grep(TMT_marker[j],temp_col)],TMT_marker[j]) 
-    temp <- c(temp,substr(temp_col[j],col_pos[1,1],nchar(temp_col)))
+    temp <- c(temp,substr(temp_col[j],col_pos[1,1],(nchar(temp_col)+1)))
   }
   
   col <- data.frame(id=temp)
@@ -380,8 +381,7 @@ use_imputation_option <- function(data, options) {
   }
 } 
 
-make_summarizedData <- function(main,file_type){
-  print(file_type)
+make_summarizedData <- function(main,file_type,design){
   if(file_type == "TMT"){
     data_col <- grep("Sample",colnames(main))
   } 
@@ -390,26 +390,18 @@ make_summarizedData <- function(main,file_type){
   } else{
     data_col <- grep("iBAQ",colnames(main))
   }
-  summary_data <- make_se_parse(main,data_col)
+  design$label <- as.character(design$label)
+  design$condition <- as.character(design$condition)
+  design$replicate <- as.numeric(design$replicate)
+  print(class(design$label))
+  print(class(design$condition))
+  print(class(design$replicate))
+  summary_data <- make_se(main,data_col,design)
   return(summary_data)
 }
 
 make_expDesignData <- function(case,ctrl) {
-  case_list <- strsplit(as.character(case), split = '.', fixed = TRUE)
-  ctrl_list <- strsplit(as.character(ctrl), split = '.', fixed = TRUE)
-  
-  case_label <- c()
-  for(n in 1:length(case_list)){
-    case_label <- c(case_label,case_list[[n]][1])
-  }
-  
-  ctrl_label <- c()
-  for(m in 1:length(ctrl_list)){
-    ctrl_label <- c(ctrl_label,ctrl_list[[m]][1])
-  }
-
-  label <- c(case_label,ctrl_label)
-  
+  label <- c(case,ctrl)
   condition <- c()
   condition[1:length(case)] <- c("case")
   condition[(length(case)+1):(length(case)+length(ctrl))] <- c("ctrl")

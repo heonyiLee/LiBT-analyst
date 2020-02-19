@@ -162,8 +162,6 @@ shinyServer(function(input,output, session){
     addTimeLine(timeLine)
     
     summarize_data <- summarized_Data()
-    exp_DesignData <- exp_designData()
-    print(exp_DesignData)
     # output$sidebar_tab2 <- renderUI({
     #   
     # })
@@ -270,23 +268,21 @@ shinyServer(function(input,output, session){
     return(control_samples)
   })
   
-  summarized_Data <- reactive({
-    main <- main_data()
-    file_type <- input$file_type
-    print(file_type)
-    summary <- make_summarizedData(main,file_type)
-    return(summary)
-  })
   
-  exp_designData <- reactive({
+  exp_DesignData <- reactive({
     case <- case_samples()
-    print(case)
     ctrl <- control_samples()
-    print(ctrl)
     exp_design <- make_expDesignData(case,ctrl)
     return(exp_design)
   })
   
+  summarized_Data <- reactive({
+    design <- exp_DesignData()
+    main <- main_data()
+    file_type <- input$file_type
+    summary <- make_summarizedData(main,file_type,design)
+    return(summary)
+  })
   
   preprocessed_data <- eventReactive(input$preprocess_btn, {
     transformation_item <- input$transformation
