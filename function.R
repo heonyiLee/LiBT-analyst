@@ -1,9 +1,17 @@
 file_input_test <- function(file, file_type) {
-  if(file_type=="TMT"){
-    cols <- colnames(file)[grep("Abundance", colnames(file))]
-  } else {
-    cols <- colnames(file)[grep(file_type, colnames(file))]
-  }
+  switch(file_type,
+         "TMT" = 
+           {cols <- colnames(file)[grep("Abundance", colnames(file))]},
+         "iBAQ" = 
+           {cols <- colnames(file)[grep("iBAQ", colnames(file))]},
+         "LFQ" = 
+           {cols <- colnames(file)[grep("LFQ", colnames(file))]})
+  
+  # if(file_type=="TMT"){
+  #   cols <- colnames(file)[grep("Abundance", colnames(file))]
+  # } else {
+  #   cols <- colnames(file)[grep(file_type, colnames(file))]
+  # }
   
   return(cols)
 }
@@ -14,43 +22,29 @@ filter_with_option <- function(option, data) {
   data <- dplyr::filter(data, Peptides != 0)#4903
   data <- dplyr::filter(data, Intensity != 0)#4898
   
-  if(length(option)==1 & option[1] == "potential") { #4844
-    
-    data <- dplyr::filter(data, Potential.contaminant != "+")
-    
-  } else if(length(option)==1 & option[1] == "reverse") { #4844
-    
-    data <- dplyr::filter(data, Reverse != "+")
-    
-  } else if(length(option)==1 & option[1] == "identified") { #4877
-    
-    data <- dplyr::filter(data, Only.identified.by.site != "+")
-    
-  } else if(length(option)==2 & 
-            (option[1] == "potential" & option[2] == "reverse")) { #4793
-    
-    data <- dplyr::filter(data, Potential.contaminant != "+" &
-                            Reverse != "+")
-  } else if(length(option)==2 & 
-            (option[1] == "potential" & option[2] == "identified")) { # 4826
-    
-    data <- dplyr::filter(data, Potential.contaminant != "+" &
-                            Only.identified.by.site != "+")
-  } else if(length(option)==2 & 
-            (option[1] == "reverse" & option[2] == "identified")) { #4829
-    
-    data <- dplyr::filter(data, Reverse != "+" &
-                            Only.identified.by.site != "+")
-  } else if(length(option)==3 & 
-            (option[1] == "potential" &
-             option[2] == "reverse" & option[3] == "identified")) { #4805
-    
-    data <- dplyr::filter(data, Potential.contaminant != "+" &
-                            Only.identified.by.site != "+" & Reverse != "+")
-    
-  } else if(length(option)==0) {
-    data <- data
-  } 
+  option <- paste0(option, collapse=",")
+  
+  switch(option,
+         "potential" = 
+           {data <- dplyr::filter(data, Potential.contaminant != "+")},
+         "reverse" = 
+           {data <- dplyr::filter(data, Reverse != "+")},
+         "identified" = 
+           {data <- dplyr::filter(data, Only.identified.by.site != "+")},
+         "potential,reverse" = 
+           {data <- dplyr::filter(data, Potential.contaminant != "+" &
+                                                        Reverse != "+")},
+         "potential,identified" = 
+           {data <- dplyr::filter(data, Potential.contaminant != "+" &
+                                    Only.identified.by.site != "+")},
+         "reverse,identified" = 
+           {data <- dplyr::filter(data, Reverse != "+" &
+                                    Only.identified.by.site != "+")},
+         "potential,reverse,identified" = 
+           {data <- dplyr::filter(data, Potential.contaminant != "+" &
+                                    Only.identified.by.site != "+" & Reverse != "+")},
+         {data <- data}
+         )
   return(data)
 }
 
@@ -60,17 +54,17 @@ get_main_data_LiB <- function(data, file_type) {
   rv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_rv_20200114ver.txt")
   nrv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_nrv_20200114ver.txt")
   
-  ID <- as.character(data$Majority.protein.IDs)
+  ProteinID <- as.character(data$Majority.protein.IDs)
   Protein_count <- as.character(data$Peptide.counts..all.)
-  name <- as.character(data$Gene.names)
+  GeneName <- as.character(data$Gene.names)
   
   multi_pos <- grep(";",Protein_count,fixed = T)
-  ID_multi <- ID[multi_pos] 
+  ProteinID_multi <- ProteinID[multi_pos] 
   Protein_count_multi <- Protein_count[multi_pos]
   
   pt_multi <- c()
-  for(i in 1:length(ID_multi)){
-    pt_id <- ID_multi[i]
+  for(i in 1:length(ProteinID_multi)){
+    pt_id <- ProteinID_multi[i]
     pt_id <- data.frame(do.call('rbind', strsplit(as.character(pt_id), split = ';', fixed = TRUE)))
     pt_id <- as.character(t(pt_id))
     
@@ -100,7 +94,7 @@ get_main_data_LiB <- function(data, file_type) {
         pt_db <- pt_nrv
         pt_db <- pt_db[!duplicated(pt_db$Entry),]
       }else{
-        data_pos <- grep(ID_multi[i],data$Majority.protein.IDs)
+        data_pos <- grep(ProteinID_multi[i],data$Majority.protein.IDs)
         pt_db <- data.frame(Entry=data$Majority.protein.IDs[data_pos],Gene.symbol=data$Gene.names[data_pos])
       }
     }
@@ -114,17 +108,17 @@ get_main_data_LiB <- function(data, file_type) {
       }
       pt_id <- gsub("^;","",id)
       pt_gn <- gsub("^;","",gn)
-      gn_multi <- data.frame(ID=pt_id,name=pt_gn)
+      gn_multi <- data.frame(ProteinID=pt_id,GeneName=pt_gn)
     } else{
       pt_gn <- pt_db$Gene.symbol
-      gn_multi <- data.frame(ID=pt_db$Entry,name=pt_gn)
+      gn_multi <- data.frame(ProteinID=pt_db$Entry,GeneName=pt_gn)
     }
     
     pt_multi <- rbind(pt_multi,gn_multi)
   }
   
-  ID[multi_pos] <- as.character(pt_multi$ID)
-  name[multi_pos] <- as.character(pt_multi$name)
+  ProteinID[multi_pos] <- as.character(pt_multi$ProteinID)
+  GeneName[multi_pos] <- as.character(pt_multi$GeneName)
   
   cn_data <- colnames(data)
   
@@ -140,9 +134,28 @@ get_main_data_LiB <- function(data, file_type) {
   Unique_peptides <- data[,unique_pos]
   Sequence_coverage <- data$Sequence.coverage....
   
-  main_df <- cbind(ID,name,main,Unique_peptides,Sequence_coverage)
-  main_df <- make_unique(main_df, "name", "ID", delim=";")
-  return(main_df)
+  main_df <- cbind(ProteinID,GeneName,main,Unique_peptides,Sequence_coverage)
+  
+  isDup_Gene <- main_df$GeneName %>% duplicated() %>% any()
+  if(isDup_Gene==T){
+    data_unique <- make_unique(main_df, "GeneName", "ProteinID")
+  } else{
+    data_col <- colnames(data)
+    data_pos <- which("ProteinID"==data_col | "GeneName"==data_col)
+    colnames(data)[data_pos] <- c("ID","name")
+    data_unique <- data
+  }
+  
+  isDup_name <- data$name %>% duplicated() %>% any()
+  if(isDup_name == F){
+    data_unique <- data.frame(ID=data_unique$ID,name=data_unique$name,data_unique[,-c(1:2)])
+    return(data_unique)
+  }
+  
+  # if(data$Gene.names %>% duplicated() %>% any()) {
+  #   data_unique <- make_unique(data, "Gene.names", "Protein.IDs", delim=";")
+  # }
+  # return(data_unique)
 }
 
 
@@ -213,25 +226,33 @@ get_main_data_T <- function(data,normalization) {
   pt_nrv <- pt_nrv[,c(2,18,3:12)]
   
   main_df <- rbind(pt_rv,pt_nrv,pt_none)
-  return(main_df)
+  
+  
+  
+  isDup_Gene <- main_df$Gene.symbol %>% duplicated() %>% any()
+  if(isDup_Gene==T){
+    print("true")
+    data_unique <- make_unique(main_df, "Gene.symbol", "Accession")
+  } else{
+    print("false")
+    data_col <- colnames(data)
+    data_pos <- which("Accession"==data_col | "Gene.symbol"==data_col)
+    colnames(data)[data_pos] <- c("ID","name")
+    data_unique <- data
+  }
+  
+  isDup_name <- data$name %>% duplicated() %>% any()
+  if(isDup_name==F){
+    data_unique <- data.frame(ID=data_unique$ID,name=data_unique$name,data_unique[,-c(1:2,(ncol(data_unique)-1):ncol(data_unique))])
+    return(data_unique)
+  } 
 }
 
 
-make_case_samples_LiB <- function(data) {
+make_case_samples_LiB <- function(data, file_type) {
   
-  # file_type <- paste(file_type, ".")
   temp_col <- colnames(data)
   temp_col <- temp_col[grep(file_type, temp_col)]
-  # file_type <- as.character(paste0(file_type,".intensity."))
-  # temp <- data.frame(do.call('rbind', strsplit(as.character(temp_col),
-  #                                              split = file_type, fixed = TRUE)))
-  # col <- data.frame(id=temp[,2])
-  # 
-  # col1 <- col[1:(nrow(col)/2),]
-  # col2 <- col[((nrow(col)/2)+1):nrow(col),]
-  # 
-  # col <- union(col1, col2)
-  # col <- paste0(file_type, col)
   
   return(temp_col)
 }
@@ -309,105 +330,123 @@ make_case_samples_diffT <- function(data,normalization) {
   return(col)
 }
 
-
-use_transformation_option <- function(data, samples) {
-  for(i in 1:nrow(data)) {
-    data[i,c(samples)] <- apply(data[i,c(samples)],1,function(x){2^(x)})
-  }
-  return(data)
-}
-
-use_valid_option <- function(data, case, control, valid_num) {
-  case_min <- length(case) * valid_num
-  control_min <- length(control) * valid_num
-  cols <- colnames(data)
+make_expDesignData <- function(case,ctrl) {
+  label <- c(case,ctrl)
+  condition <- c()
+  condition[1:length(case)] <- c("case")
+  condition[(length(case)+1):(length(case)+length(ctrl))] <- c("control")
   
-  for(i in 1:nrow(data)) {
-    case_sums <- rowSums(is.finite(as.matrix(data[i,c(case)])))
-    control_sums <- rowSums(is.finite(as.matrix(data[i,c(control)])))
-    
-    if((case_sums < case_min) || (control_sums < control_min)){
-      data[i, "Keep_or_not"] <- c("Not")
-    } else if((case_sums >= case_min) || (control_sums >= control_min)){
-      data[i, "Keep_or_not"] <- c("Keep")
-    }
+  replicate_case <- c()
+  for(i in 1:length(case)){
+    replicate_case[i] <- i
   }
   
-  data <- subset(data, Keep_or_not=="Keep")
-  data <- select(data, cols)
-  
-  return(data)
-}
-
-fit_data_into_DEP_format <- function(file_type, data){
-  if(file_type=="TMT"){
-    data$Protein.IDs <- as.character(data$Accession)
-    data$Description <- gsub("Gene_Symbol=", "GN=", data$Description)
-    temp <- data.frame(do.call("rbind",
-                               strsplit(as.character(data$Description), split="GN=", fixed=T)))
-    temp <- select(temp, X2)
-    temp <- data.frame(do.call("rbind",
-                               strsplit(as.character(temp$X2), split="PE=", fixed=T)))
-    temp <- select(temp, X1)
-    temp$X1 <- gsub(" [[:print:]]*", "", temp$X1)
-    colnames(temp) <- c("Gene.names")
-    data <- cbind(temp, data)
-  } 
-  
-}
-
-
-
-get_preprocessed_data <- function(file_type, data, option, case, control) {
-  
-  log_option <- option[[1]][1]
-  valid_option <- option[[1]][2]
-  imputation_option <- option[[1]][3]
-  normalization_option <- option[[1]][4]
-  samples <- c(case, control)
-  
-  if(log_option=="none") {
-    data <- use_transformation_option(data, samples)
-  } else {
-    data <- data
+  replicate_ctrl <- c()
+  for(j in 1:length(ctrl)){
+    replicate_ctrl[j] <- j
   }
   
-  cols <- paste0(samples, collapse="|")
-  cols <- grep(cols, colnames(data))
-  # data_se <- make_se_parse(data, cols)
-  case_design <- data.frame(label=c(case), condition=rep("Case", length(case)),
-                            replicate=c(1:length(case)))
-  control_design <- data.frame(label=c(control), condition=rep("Control", length(control)),
-                               replicate=c(1:length(control)))
+  replicate <- c(replicate_case,replicate_ctrl)
   
-  exp_design <- rbind(case_design, control_design)
-  exp_design$label <- as.character(exp_design$label)
-  exp_design$condition <- as.character(exp_design$condition)
-  exp_design$replicate <- as.character(exp_design$replicate)
+  exp_design <- data.frame(label=label, condition=condition, replicate=replicate)
   
-  data_se <- make_se(data, cols, exp_design)
-  
-  return(data_se)
-  # plot_frequency(data_se)
-  
-  
-  
-  # data <- switch(valid_option,
-  #                   "30" = use_valid_option(data, case, control, 0.3),
-  #                   "50" = use_valid_option(data, case, control, 0.5),
-  #                   "70" = use_valid_option(data, case, control, 0.7),
-  #                   "100" = use_valid_option(data, case, control, 1))
+  # case_design <- data.frame(label=c(case), condition=rep("Case", length(case)),
+  #                           replicate=c(1:length(case)))
+  # control_design <- data.frame(label=c(control), condition=rep("Control", length(control)),
+  #                              replicate=c(1:length(control)))
   # 
-  # data <- switch(imputation_option,
-  #                   "normal_distribution" = use_imputation_option(data, "normal_distribution"),
-  #                   "constant" = use_imputation_option(data, "constant"),
-  #                   "nan" = use_imputation_option(data, "nan"),
-  #                   "none" = use_imputation_option(data, "none"))
+  # exp_design <- rbind(case_design, control_design)
   
-  # list("Normal distribution" = "normal_distribution", "Constant" = "constant", 
-  # "NaN"="nan", "None"="none")
-  
+  return(exp_design)
 }
+
+make_summarizedData <- function(main,file_type,design){
+  if(file_type == "TMT"){
+    data_col <- grep("Sample",colnames(main))
+  } else if(file_type == "LFQ"){
+    data_col <- grep("LFQ",colnames(main))
+  } else{
+    data_col <- grep("iBAQ",colnames(main))
+  }
+  design$label <- as.character(design$label)
+  design$condition <- as.character(design$condition)
+  design$replicate <- as.numeric(design$replicate)
+  summary_data <- make_se(main,data_col,design)
+  return(summary_data)
+}
+
+
+
+# use_transformation_option <- function(data, case, control, options) {
+#   samples <- c(case, control)
+# 
+#   if(options=="none") {
+#     for(i in 1:nrow(data)) {
+#       data[i,c(samples)] <- apply(data[i,c(samples)],1,function(x){2^(x)})
+#     }
+#   } else {
+#     data <- data
+#   }
+# 
+#   return(data)
+# }
+
+
+use_valid_option <- function(data, case, control, option) {
+  option <- as.numeric(as.character(option))
+  valid_num <- length(case) * option
+  
+  data_filt <- filter_missval(data, thr=valid_num)
+  
+  return(data_filt)
+}
+
+use_normalization_option <- function(data, option) {
+  if(option=="YES") {
+    data_norm <- normalize_vsn(data)
+  } else {
+    data_norm <- data
+  }
+  
+  return(data_norm)
+}
+
+
+use_imputation_option <- function(data, case, control, option) {
+  
+  switch(option,
+         "QRILC" =
+           {data_imp <- impute(data, fun="QRILC")},
+         "MinProb" =
+           {data_imp <- impute(data, fun="MinProb", q=0.01)},
+         "knn" =
+           {data_imp <- impute(data, fun="knn", rowmax=0.9)},
+         "zero" =
+           {data_imp <- impute(data, fun="zero")}
+         )
+  return(data_imp)
+}
+
+
+
+# fit_data_into_DEP_format <- function(file_type, data){
+#   if(file_type=="TMT"){
+#     data$Protein.IDs <- as.character(data$Accession)
+#     data$Description <- gsub("Gene_Symbol=", "GN=", data$Description)
+#     temp <- data.frame(do.call("rbind",
+#                                strsplit(as.character(data$Description), split="GN=", fixed=T)))
+#     temp <- select(temp, X2)
+#     temp <- data.frame(do.call("rbind",
+#                                strsplit(as.character(temp$X2), split="PE=", fixed=T)))
+#     temp <- select(temp, X1)
+#     temp$X1 <- gsub(" [[:print:]]*", "", temp$X1)
+#     colnames(temp) <- c("Gene.names")
+#     data <- cbind(temp, data)
+#   } 
+# }
+
+
+
 # case <- c("LFQ.intensity.Total_309B", "LFQ.intensity.Total_445B", "LFQ.intensity.Total_555B",
 # "LFQ.intensity.Total_588B", "LFQ.intensity.Total_636B", "LFQ.intensity.Total_667B",
 # "LFQ.intensity.Total_764B", "LFQ.intensity.Total_741B", "LFQ.intensity.Total_876B",
@@ -440,26 +479,4 @@ get_preprocessed_data <- function(file_type, data, option, case, control) {
 # data_unique <- make_unique(data, "name", "ID", delim=";")
 # data_unique$name %>% duplicated() %>% any()
 # 
-# 
-# 
-# 
-# 
-# 
-# 
-# data_filt <- filter_missval(data_se, thr=0)
-# plot_numbers(data_filt)
-# 
-# plot_coverage(data_filt)
-# 
-# data_norm <- normalize_vsn(data_filt)
-# plot_normalization(data_filt, data_norm)
-# plot_missval(data_filt)
-# plot_detect(data_filt)
-# 
-# data_imp<-impute(data_norm, fun="MinProb", q=0.01)
-# data_imp_man <- impute(data_norm, fun="man", shift=1.8, scale=0.3)
-# data_imp_knn <- impute(data_norm, fun="knn", rowmax=0.9)
-# plot_imputation(data_norm, data_imp)
-# 
-# 
-# data_diff <- test_diff(data_imp, type="control", control="C")
+#
