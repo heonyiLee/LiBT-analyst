@@ -3,7 +3,7 @@ library(readr)
 library(stringr)
 library(DEP)
 library(sortable)
-
+library(SummarizedExperiment)
 
 source("function.R")
 # 2019.12.30
@@ -223,10 +223,6 @@ shinyServer(function(input,output, session){
   
   
   
-  
-  
-  
-  
   # output$download_frequency_svg <- downloadHandler(
   #   filename = function() {"frequency_plot.png"},
   #   content = function(file) {
@@ -268,8 +264,6 @@ shinyServer(function(input,output, session){
       return(temp_df)
     }
   })
-  
-  
   
   main_data <- reactive({NULL})
   main_data <- eventReactive(input$file_upload_btn, {
@@ -412,7 +406,7 @@ shinyServer(function(input,output, session){
   heatmap_input <- reactive({
     col_limit <- length(total_samples())
     plot_heatmap(dep(), type="centered", kmeans=T, k=6,
-                 col_limit=4, show_row_names=F, indicate=c("condition"))
+                 show_row_names=F, indicate=c("condition"))
   })
   
   volcano_input <- reactive({
