@@ -18,6 +18,12 @@
   display:inline;
   margin-right:15px;
 }
-#preprocess_btn{ 
-  margin-left:15px;
+
+.bucket-list-horizontal{
+  margin-left : -20px;
+  width : 250px;
+}
+
+.rank-list{
+  width:230px;
 }
