@@ -2,8 +2,12 @@ library(shiny)
 library(shinyjs)
 library(shinydashboard)
 library(shinydashboardPlus)
+library(shinyWidgets)
 library(shinyalert)
 library(shinycssloaders)
+library(shinyjqui)
+library(sortable)
+
 
 # 2019.12.30
 ui <- function(request) {shinyUI(
@@ -28,21 +32,47 @@ ui <- function(request) {shinyUI(
                 tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
       tags$head(tags$script(src="body.js")),
       box(
-        id = "summary_box",
         solidHeader = T,
         width = 11,
         withSpinner(DT::dataTableOutput("uploaded_file_header"))
       ), # End of uploaded file data table
+      # box(
+      #   solidHeader = T,
+      #   width = 4,
+      #   withSpinner(DT::dataTableOutput("result_table_header"))
+      # ),
       box(
-        id = "preprocessed_box",
+        id = "pca_plot_box",
         solidHeader = T,
-        width = 11,
-        withSpinner(DT::dataTableOutput("preprocessed_data_header"))
+        width = 4,
+        plotOutput("pca_plot"),
+        downloadButton("download_pca", "Save_png")
+      ),
+      box(
+        id = "correlation_matrix_box",
+        solidHeader = T,
+        width = 4,
+        plotOutput("correlation_matrix"),
+        downloadButton("download_correlation", "Save_png")
+      ),
+      box(
+        id = "heatmap_box",
+        solidHeader = T,
+        width = 4,
+        plotOutput("heatmap"),
+        downloadButton("download_heatmap", "Save_png")
+      ),
+      box(
+        id = "volcano_box",
+        solidHeader = T,
+        width = 4,
+        plotOutput("volcano_plot"),
+        downloadButton("download_volcano", "Save_png")
       )
       ,useShinyalert(),
     ), # End of dashboardBody
     rightsidebar = rightSidebar(
-      id = "rightsidebar",
+      id = "entireRightsidebar",
       width = 350,
       background = "dark",
       rightSidebarTabContent(
@@ -52,7 +82,6 @@ ui <- function(request) {shinyUI(
         icon="file-upload",
         
         gradientBox(
-          useShinyjs(),
           title = "Upload Data",
           width = 12,
           gradientColor = "maroon", 
@@ -70,8 +99,8 @@ ui <- function(request) {shinyUI(
                                  "text/comma-separated-values,text/plain",
                                  ".csv")),
             hidden(radioButtons("TMT_input_option", label="Get Normalized TMT data", 
-                         choices = list("YES" = "T", "NO" = "F"), 
-                         selected = "F")),
+                                choices = list("YES" = "T", "NO" = "F"), 
+                                selected = "F")),
             
             checkboxGroupInput("nonTMT_input_option", label="Filtering Options (Remove all)", 
                                choices = list("Potential contaminant" = "potential", 
@@ -90,10 +119,10 @@ ui <- function(request) {shinyUI(
           boxToolSize = "md", 
           closable = F,
           footer = fluidRow(
-            selectInput("case_group_selection", label="Case samples",
-                        choices=c(),selectize=T, multiple=T),
-            selectInput("control_group_selection", label="Control samples",
-                        choices=c(),selectize=T, multiple=T),
+            pickerInput(inputId = "case_group_selection", label="Case samples", multiple=TRUE,
+                        choices=c(), options=list(`actions-box` = TRUE, `selected-text-format` = "count > 1")),
+            pickerInput(inputId = "control_group_selection", label="Control samples", multiple=TRUE,
+                        choices=c(), options=list(`actions-box` = TRUE, `selected-text-format` = "count > 1")),
             tags$hr(),
             actionButton("exp_design_submit_btn", "Submit")
           )
@@ -101,67 +130,78 @@ ui <- function(request) {shinyUI(
       ),
       rightSidebarTabContent(
         uiOutput("sidebar_tab2"),
-        id=2,
+        id="sidebar_tab2",
         icon="dna",
-        #active = T,
+        active = F,
         gradientBox(
-          title = "Transformation",
+          title = "Details",
           width = 12,
-          gradientColor = "aqua", 
-          boxToolSize = "md", 
+          gradientColor = "aqua",
+          boxToolSize = "md",
           closable = F,
           footer = fluidRow(
-            radioButtons("transformation", label="", 
-                         choices = list("log2" = "log2", "none" = "none"), 
-                         selected = "log2"),
-          )
-        ),
-        gradientBox(
-          title = "Filter based on Valid Value",
-          width = 12,
-          gradientColor = "aqua", 
-          boxToolSize = "md", 
-          closable = F,
-          footer = fluidRow(
-            radioButtons("valid_value", label="Choose % of valid value", 
-                         choices = list("30%" = 30, "50%" = 50, "70%"= 70, "100%"=100), 
-                         selected = 70)
-          )
-        ),
-        gradientBox(
-          title = "Deal with Missing Value",
-          width = 12,
-          gradientColor = "aqua", 
-          boxToolSize = "md", 
-          closable = F,
-          footer = fluidRow(
-            radioButtons("imputation", label="Choose Imputation", 
-                         choices = list("Normal distribution" = "normal_distribution", "Constant" = "constant", 
-                                        "NaN"="nan", "None"="none"), 
-                         selected = "normal_dis")
-          )
-        ),
-        gradientBox(
-          title = "Normalization",
-          width = 12,
-          gradientColor = "aqua", 
-          boxToolSize = "md", 
-          closable = F,
-          footer = fluidRow(
-            radioButtons("normalization", label="Choose method of normalization", 
-                         choices = list("Width distribution" = "quantile", 
-                                        "Z-score"="zscore", "none" = "none"), 
-                         selected = "quantile")
-          )
-        )
-        ,actionButton("preprocess_btn", "Preprocess")
+            hidden(prettyToggle(inputId="exp_design_check", 
+                                label_on="submitted", label_off="not_submitted", value=FALSE)),
+            bucket_list(
+              header = "Drag to select options and set the order",
+              add_rank_list(
+                text = "Use",
+                labels = list(
+                  "Use_valid_value" = radioButtons("valid_value", label="Choose % of valid value",
+                                                   choices = list("30%" = 0.3, "50%" = 0.5, "70%"= 0.7, "100%"=0)),
+                  "Use_imputation" = radioButtons("imputation", label="Choose Imputation",
+                                                  choiceNames = list(HTML("QRILC<br/>(quantile regression-based<br/>left-censored function)"),
+                                                                     HTML("MinProb<br/>(left-shifted Gaussian distribution)"), 
+                                                                     HTML("KNN<br/>(k-nearest neighbour approach"),
+                                                                     HTML("Constant<br/>(replace with zero value)")),
+                                                  choiceValues = list("QRILC", "MinProb", "knn", "zero")),
+                  # choices = list("Normal distribution" = "normal_distribution",
+                  #                "Constant" = "constant",
+                  #                "NaN"="nan")),
+                  "Use_normalization" = radioButtons("normalization", label="Choose method of normalization",
+                                                     choices = list("YES" = "YES",
+                                                                    "NO" = "NO"))
+                  # choices = list("Width distribution" = "quantile",
+                  #                "Z-score"="zscore", "none" = "none"))
+                ),
+                input_id = "use_options"
+              ),
+              add_rank_list(
+                text = "Not to Use",
+                labels = NULL,
+                input_id = "not_to_use_options"
+              )
+            ),
+            tags$hr(),
+            actionButton("preprocess_btn", "Start preprocessing")
+          ) # End of Details box's footer
+        ) # End of Details box
       ),
       rightSidebarTabContent(
         id=3,
         icon="chart-bar",
-        textInput("caption", "Caption", "Data Summary")
+        active = F,
+        gradientBox(
+          title = HTML("Differential <br/>experimental analysis"),
+          width = 12,
+          icon = "chart-bar",
+          gradientColor = "green",
+          boxToolSize = "md",
+          closable = F,
+          footer = fluidRow(
+            uiOutput("dea_case"),
+            uiOutput("dea_control"),
+            numericInput("dea_pvalue", label = HTML("Set the threshold <br/>for the adjusted P-value"),
+                         value=0.05),
+            numericInput("dea_log2fc", label = HTML("Set the threshold <br/>for the log2 fold change"),
+                         value=1.5),
+            tags$hr(),
+            actionButton("dea_btn", "Start DEA")
+          )
+        ) # End of DEP box
       )
     ), # End of rightSidebar
-    title = "LiBT-Analyst"
-  )
-)}
+    title = "LiBT-Analyst",
+    useShinyjs()
+  ))
+}
