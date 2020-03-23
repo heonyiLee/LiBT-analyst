@@ -169,7 +169,6 @@ get_main_data_T <- function(data,normalization) {
   
   cn <- colnames(data)
   
-  
   data$Accession <- as.character(data$Accession)
   data_class <- sapply(data,class)
   rm_pos <- grep("factor",data_class) 
@@ -187,7 +186,7 @@ get_main_data_T <- function(data,normalization) {
   
   main_data <- data[,main_pos]
   cn <- colnames(main_data)
-  
+
   if(normalization == "T"){
     nor_pos <- grep("Normalized",cn)
     main_data <- main_data[,-nor_pos]
@@ -271,6 +270,7 @@ make_case_samples_LiB <- function(data,file_type) {
 }
 
 make_case_samples_T <- function(data) {
+  
   data <- data[,c(3:ncol(data))]
   temp_col <- colnames(data)
   
@@ -292,6 +292,8 @@ make_case_samples_T <- function(data) {
 }
 
 make_case_samples_diffT <- function(data,normalization) {
+  print("!!!!!!!!!!!!!")
+  print(nrow(data))
   cn <- colnames(data)
   data$Accession <- as.character(data$Accession)
   data_class <- sapply(data,class)
@@ -312,17 +314,19 @@ make_case_samples_diffT <- function(data,normalization) {
   main_data <- data[,main_pos]
   cn <- colnames(main_data)
   
-  nor_pos <- grep("Normalized",cn)
-  main_pos <- c(1,nor_pos)
-  main_data <- main_data[,main_pos]
-  # if(normalization == "T"){
-  #   nor_pos <- grep("Normalized",cn)
-  #   main_pos <- c(1,nor_pos)
-  #   main_data <- main_data[,main_pos]
-  # } else{
-  #   nor_pos <- grep("Normalized",cn)
-  #   main_data <- main_data[,-nor_pos]
-  # }
+  # nor_pos <- grep("Normalized",cn)
+  # main_pos <- c(1,nor_pos)
+  # main_data <- main_data[,main_pos]
+  if(normalization == "T"){
+    nor_pos <- grep("Normalized",cn)
+    main_data <- main_data[,-nor_pos]
+    # nor_pos <- grep("Normalized",cn)
+    # main_pos <- c(1,nor_pos)
+    # main_data <- main_data[,main_pos]
+  } else{
+    nor_pos <- grep("Normalized",cn)
+    main_data <- main_data[,-nor_pos]
+  }
   
   main_data <- na.omit(main_data)
   main_data <- main_data[,c(2:ncol(main_data))]
@@ -666,7 +670,8 @@ get_main_data_T <- function(data,normalization) {
   
   if(normalization == "T"){
     nor_pos <- grep("Normalized",cn)
-    main_data <- main_data[,-nor_pos]
+    main_pos <- c(1,nor_pos)
+    main_data <- main_data[,main_pos]
   } else{
     origin_pos <- grep("Abundance", cn)
     nor_pos <- grep("Normalized",cn)
@@ -705,7 +710,6 @@ get_main_data_T <- function(data,normalization) {
   pt_nrv <- pt_nrv[,c(2,18,3:12)]
   
   main_df <- rbind(pt_rv,pt_nrv,pt_none)
-  
   
   
   isDup_Gene <- main_df$Gene.symbol %>% duplicated() %>% any()
@@ -759,7 +763,7 @@ make_case_samples_T <- function(data) {
 
 make_case_samples_diffT <- function(data,normalization) {
   cn <- colnames(data)
-  data$Accession <- as.character(data$Accession)
+  data$ID <- as.character(data$ID)
   data_class <- sapply(data,class)
   rm_pos <- grep("factor",data_class) 
   rm_pos <- c(rm_pos,grep("Ratio",cn))
@@ -767,7 +771,7 @@ make_case_samples_diffT <- function(data,normalization) {
   data <- data[,-rm_pos]
   cn <- cn[-rm_pos]
   
-  main_pos <- grep("Accession",cn)
+  main_pos <- grep("ID",cn)
   
   TMT_marker <- c("126","127C","127N","128C","128N","129C","129N","130C","130N","131")
   for(i in 1:length(TMT_marker)){

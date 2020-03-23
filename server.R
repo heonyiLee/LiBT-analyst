@@ -50,7 +50,6 @@ shinyServer(function(input,output, session){
                            choices = list("YES" = "T", "NO" = "F"), selected="F")
         if(length(state)==0){
           shinyjs::disable("TMT_input_option")
-          print(input$TMT_input_option)
         }
       }
     }
@@ -108,6 +107,7 @@ shinyServer(function(input,output, session){
           options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
         
         samples <- total_samples()
+        print("!!!!!!!!")
         print(samples)
         updatePickerInput(session, "case_group_selection", choices = samples)
       }
@@ -277,8 +277,8 @@ shinyServer(function(input,output, session){
     
     file_type <- input$file_type
     if(file_type=="TMT"){
-      print(input$TMT_input_option)
       temp_df <- get_main_data_T(temp_df,input$TMT_input_option)
+  
     } else{
       checked_option <- input$nonTMT_input_option
       temp_df <- filter_with_option(checked_option, temp_df)
@@ -289,7 +289,8 @@ shinyServer(function(input,output, session){
   
   total_samples <- reactive({
     df <- main_data()
-    
+    print("###########")
+    print(colnames(df))  
     file_type <- input$file_type
     if(file_type=="TMT"){
       if(input$TMT_input_option=="T"){
