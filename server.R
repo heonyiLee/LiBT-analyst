@@ -4,7 +4,8 @@ library(stringr)
 library(DEP)
 library(sortable)
 library(SummarizedExperiment)
-
+library(ggplot2)
+library(edgeR)
 
 source("function.R")
 # 2019.12.30
@@ -35,7 +36,7 @@ shinyServer(function(input,output, session){
       shinyjs::show("deselect_all_filtering_btn")
     }
   })
-
+  
   
   observeEvent(input$fileBrowser, {
     temp <- file_input()
@@ -51,9 +52,14 @@ shinyServer(function(input,output, session){
                            choices = list("YES" = "T", "NO" = "F"), selected="F")
         if(length(state)==0){
           shinyjs::disable("TMT_input_option")
-          print(input$TMT_input_option)
         }
       }
+      
+      info = paste0("* File Type : ", input$file_type,"\n")
+      timeLine <<- data.frame(step="Start!:)",info=info,
+                              sample_num=as.numeric(nrow(temp)),
+                              time=as.character(Sys.time()),color="maroon",icon="file-upload")
+      addTimeLine(timeLine)
     }
   })
   
@@ -90,18 +96,27 @@ shinyServer(function(input,output, session){
       render_df <- main_data()
       if(length(render_df) != 0){
         if(input$file_type != "TMT"){
-          info <- paste0("File Type : ", input$file_type,"\n",
-                         "Option : ", input$nonTMT_input_option)
-          timeLine <<- data.frame(step="Data Input",info=info,
-                                  sample_num=as.numeric(nrow(render_df)),
-                                  time=as.character(Sys.time()),color="maroon")
+          option <- c()
+          for(i in 1:length(input$nonTMT_input_option)){
+            if(i!=length(input$nonTMT_input_option)){
+              option <- paste0(option,input$nonTMT_input_option[i]," / ")  
+            } else{
+              option <- paste0(option,input$nonTMT_input_option[i])  
+            }
+          }
+          info <- paste0("* Numerical Filter\n  : Peptides = 0\n    Intensity = 0\n",
+                         "* Categorical Filter\n", "  : ", option)
+          newTL <- data.frame(step="Data Input",info=info,
+                              sample_num=as.numeric(nrow(render_df)),
+                              time=as.character(Sys.time()),color="maroon",icon="file-upload")
+          timeLine <<- rbind(timeLine,newTL)
           addTimeLine(timeLine)
         } else{
-          info <- paste0("File Type : ", input$file_type,"\n",
-                         "Is normalized ? : ", input$TMT_input_option)
-          timeLine <<- data.frame(step="Data Input",info=info,
-                                  sample_num=as.numeric(nrow(render_df)),
-                                  time=as.character(Sys.time()),color="maroon")
+          info <- paste0("* Is normalized ? : ", input$TMT_input_option)
+          newTL <- data.frame(step="Data Input",info=info,
+                              sample_num=as.numeric(nrow(render_df)),
+                              time=as.character(Sys.time()),color="maroon",icon="file-upload")
+          timeLine <<- rbind(timeLine,newTL)
           addTimeLine(timeLine)
         }
         output$uploaded_file_header <- DT::renderDataTable({
@@ -109,7 +124,6 @@ shinyServer(function(input,output, session){
           options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
         
         samples <- total_samples()
-        print(samples)
         updatePickerInput(session, "case_group_selection", choices = samples)
       }
     }
@@ -133,14 +147,18 @@ shinyServer(function(input,output, session){
     updatePrettyToggle(session, "exp_design_check", label=NULL, value=TRUE)
     
     
-    tmp <- paste0("# of Case : ", length(case_samples()),"\n",
-                  "# of Control : ", length(control_samples()))
+    condition <- make_condition(case_samples(),control_samples())
+    group_name <- unique(condition)
+    tmp <- paste0("* Case Group : ", group_name[1], "\n",
+                  "* Control Group : ", group_name[2], "\n",
+                  "* # of Case : ", length(case_samples()),"\n",
+                  "* # of Control : ", length(control_samples()))
     info <- paste0(info,tmp,"\n")
     newTL <- data.frame(step="Exp Design Submitted",
                         info=info,
                         sample_num=as.numeric(nrow(main_data())),
-                        time=as.character(Sys.time()),color="maroon")
-    timeLine <- rbind(timeLine,newTL)
+                        time=as.character(Sys.time()),color="maroon",icon="file-upload")
+    timeLine <<- rbind(timeLine,newTL)
     addTimeLine(timeLine)
   })
   
@@ -151,31 +169,31 @@ shinyServer(function(input,output, session){
         assay(data_se)}, 
         options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
       
-      tmp <- paste0("Valid value : ", paste0(input$valid_value,"%"), "\n",
-                    "Imputation : " , str_to_title(input$imputation), "\n",
-                    "Normalization : ", str_to_title(input$normalization))
+      vv <- as.character(as.numeric(input$valid_value)*100)
+      tmp <- paste0("* Valid value : ", paste0(vv,"%"), "\n",
+                    "* Imputation : " , str_to_title(input$imputation), "\n",
+                    "* Normalization : ", str_to_title(input$normalization))
       info <- paste0(info,tmp,"\n")
       newTL <- data.frame(step="Preprocessing",
                           info=info,
                           sample_num=as.numeric(nrow(data_se)),
-                          time=as.character(Sys.time()),color="maroon")
-      timeLine <- rbind(timeLine, newTL)
+                          time=as.character(Sys.time()),color="aqua",icon="dna")
+      timeLine <<- rbind(timeLine, newTL)
       addTimeLine(timeLine)
-      
       
       output$dea_case <- renderUI({
         boxPlus(
-            title = "Case samples",
-            closable = F,
-            collapsed = T,
-            enable_label = T,
-            label_text = length(case_samples()),
-            label_status = "danger",
-            width = 12,
-            solidHeader = F,
-            collapsible = T,
-            footer = HTML(paste(case_samples(), collapse=",<br/>"))
-            )
+          title = "Case samples",
+          closable = F,
+          collapsed = T,
+          enable_label = T,
+          label_text = length(case_samples()),
+          label_status = "danger",
+          width = 12,
+          solidHeader = F,
+          collapsible = T,
+          footer = HTML(paste(case_samples(), collapse=",<br/>"))
+        )
       })
       
       output$dea_control <- renderUI({
@@ -200,46 +218,126 @@ shinyServer(function(input,output, session){
     
   })
   
-  
-  observeEvent(input$dea_btn, {
-    if(!is.null(ready_for_dea())){
-      output$pca_plot <- renderPlot({
-        pca_input()
-      })
-      
-      output$correlation_matrix <- renderPlot({
-        correlation_input()
-      })
-      
-      output$heatmap <- renderPlot({
-        heatmap_input()
-      })
-      
-      output$volcano_plot <- renderPlot({
-        volcano_input()
-      })
+  observeEvent(input$test_btn, {
+    if(!is.null(res_test())){
+      shinyalert("Complete Tests!", type="success", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+      info <- paste0("* Test Method : ", input$test_method,"\n",
+                     "* P.adj Method : ", input$padj_method)
+      newTL <- data.frame(step="DEA_Test",info=info,
+                          sample_num=as.numeric(nrow(assay(res_test()))),
+                          time=as.character(Sys.time()),color="green",icon="chart-bar")
+      timeLine <<- rbind(timeLine,newTL)
+      addTimeLine(timeLine)
       
     }
   })
   
- 
   
-
+  observeEvent(input$dea_btn, {
+    withProgress(message = 'Plots calculations are in progress',
+                 detail = 'Please wait for a while', value = 0, {
+                   for (i in 1:10) {
+                     incProgress(1/10)
+                     Sys.sleep(0.25)
+                   }
+                 })
+    
+    sig <- which(rowData(dep())$significant==T)
+    if(input$thres_type == "none"){
+      info <- paste0("* Threshold type : ", input$thres_type,"\n",
+                     "* The number of cluster : ", input$dea_clusterNum)
+    } else{
+      info <- paste0("* Threshold type : ", input$thres_type,"\n",
+                     "* Threshold value for\n  ", 
+                     input$thres_type, " : ", input$dea_pvalue,"\n",
+                     "  log2FC : ", input$dea_log2fc,"\n",
+                     "* The number of cluster : ", input$dea_clusterNum)
+    }
+    newTL <- data.frame(step="DEA_Visualization",info=info,
+                        sample_num=length(sig),
+                        time=as.character(Sys.time()),color="green",icon="chart-bar")
+    timeLine <<- rbind(timeLine,newTL)
+    addTimeLine(timeLine)
+    
+    if(!is.null(ready_for_dea())){
+      output$volcano_plot <- renderPlot({
+        volcano_input()
+      })
+      output$pca_plot <- renderPlot({
+        pca_input()
+      })
+    }
+    
+    if(length(sig)==0){
+      shinyalert("Ther is no DEP!", "Change threshold value or threshold type", type="error", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+      shinyjs::hide("correlation_matrix")
+      shinyjs::hide("heatmap")
+    }else{
+      output$correlation_matrix <- renderPlot({
+        correlation_input()
+      })
+      output$heatmap <- renderPlot({
+        heatmap_input()
+      })
+      
+      # if(!is.null(heatmap_input())){
+      shinyalert("Complete Visualization!", type="success", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+      shinyjs::show("correlation_matrix")
+      shinyjs::show("heatmap")  
+      # }
+    }
+    
+    data_results()
+  })
   
+  output$download_pca <- downloadHandler(
+    filename = function() {paste0("PCA_plot_", Sys.Date(), ".png")},
+    content = function(file) {
+      if(!is.null(pca_input())){
+        png(file)
+        print(pca_input())
+        dev.off()
+      }
+    }
+  )
   
+  output$download_heatmap <- downloadHandler(
+    filename = function() {paste0("Heatmap_", Sys.Date(), ".png")},
+    content = function(file) {
+      if(!is.null(heatmap_input())){
+        png(file)
+        print(heatmap_input())
+        dev.off()
+      }
+    }
+  )
   
-  # output$download_frequency_svg <- downloadHandler(
-  #   filename = function() {"frequency_plot.png"},
-  #   content = function(file) {
-  #     png(file)
-  #     print(plot_imputation(data_norm(), data_imp()))
-  #     dev.off()
-  #   }
-  # )
-
+  output$download_correlation <- downloadHandler(
+    filename = function() {paste0("Correlation_plot_", Sys.Date(), ".png")},
+    content = function(file) {
+      if(!is.null(correlation_input())){
+        png(file)
+        print(correlation_input())
+        dev.off()
+      }
+    }
+  )
   
+  output$download_volcano <- downloadHandler(
+    filename = function() {paste0("Volcano_plot_", Sys.Date(), ".png")},
+    content = function(file) {
+      if(!is.null(volcano_input())){
+        png(file)
+        print(volcano_input())
+        dev.off()
+      }
+    }
+  )
   
-##--------------------------------------------------- reactive/EventReactive Section
+  ##--------------------------------------------------- reactive/EventReactive Section
   file_input <- reactive({NULL})
   file_input <- eventReactive(input$fileBrowser, {
     req(input$fileBrowser)
@@ -270,15 +368,12 @@ shinyServer(function(input,output, session){
     }
   })
   
-  
-  
   main_data <- reactive({NULL})
   main_data <- eventReactive(input$file_upload_btn, {
     temp_df <- file_input()
     
     file_type <- input$file_type
     if(file_type=="TMT"){
-      print(input$TMT_input_option)
       temp_df <- get_main_data_T(temp_df,input$TMT_input_option)
     } else{
       checked_option <- input$nonTMT_input_option
@@ -290,7 +385,6 @@ shinyServer(function(input,output, session){
   
   total_samples <- reactive({
     df <- main_data()
-    
     file_type <- input$file_type
     if(file_type=="TMT"){
       if(input$TMT_input_option=="T"){
@@ -306,13 +400,11 @@ shinyServer(function(input,output, session){
   
   case_samples <- reactive({
     case_samples <- input$case_group_selection
-    
     return(case_samples)
   })
   
   control_samples <- eventReactive(input$case_group_selection, {
     control_samples <- setdiff(total_samples(), case_samples())
-    
     return(control_samples)
   })
   
@@ -326,7 +418,7 @@ shinyServer(function(input,output, session){
   summarized_Data <- reactive({
     case <- case_samples()
     ctrl <- control_samples()
-    design <- make_expDesignData(case, control)
+    design <- make_expDesignData(case, ctrl)
     main <- main_data()
     file_type <- input$file_type
     summary <- make_summarizedData(main,file_type,design)
@@ -353,11 +445,11 @@ shinyServer(function(input,output, session){
     for(i in 1:length(preprocessing_options)) {
       switch(preprocessing_options[i],
              "Use_valid_value" = {
-                 data_se <- use_valid_option(data_se, case, control, input$valid_value)
-                 data_filt <- data_se},
+               data_se <- use_valid_option(data_se, case, control, input$valid_value)
+               data_filt <- data_se},
              "Use_imputation" = {
-                 data_se <- use_imputation_option(data_se, case, control, input$imputation)
-                 data_imp <- data_se},
+               data_se <- use_imputation_option(data_se, case, control, input$imputation)
+               data_imp <- data_se},
              "Use_normalization" = {
                data_se <- use_normalization_option(data_se,input$normalization)
                data_norm <- data_se},
@@ -390,15 +482,114 @@ shinyServer(function(input,output, session){
     preprocessed_data()[[4]]
   })
   
+  res_test <- eventReactive(input$test_btn,{
+    req(preprocessed_data())
+    data_diff <- test_diff(ready_for_dea(), type="all")
+    if(input$test_method != "Limma"){
+      diff_rowData <- rowData(data_diff)
+      diff_colData <- colData(data_diff)
+      
+      data <- assay(data_diff)
+      df <- test(data,diff_colData,input$test_method,input$padj_method)
+      write.csv(data,"ttest_data.csv",quote = F)
+      pval_pos <- grep("p.val",colnames(diff_rowData),fixed = T)
+      padj_pos <- grep("_p.adj",colnames(diff_rowData),fixed = T)
+      
+      diff_rowData[,pval_pos] <- df$pval
+      diff_rowData[,padj_pos] <- df$padj
+      
+      data_diff_edit <- SummarizedExperiment(assays = list(assay(data_diff)), rowData = diff_rowData, colData = diff_colData)
+    } else{
+      data_diff <- data_diff
+    }
+  })
+  
+  ### if we need z-score use these code!!
+  # data_add_rejections <- reactive({
+  #   type <- input$thres_type
+  #   pvalue <- input$dea_pvalue
+  #   log2fc <- input$dea_log2fc
+  #   data_rejection <- add_rejections(res_test(), alpha=pvalue, lfc=log2fc)
+  #   if(type == "pvalue"){
+  #     dep_rowData <- rowData(data_rejection)
+  #     pval_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
+  #     log2fc_pos <- grep("diff",colnames(dep_rowData),fixed = T)
+  #     sig_pos <- grep("significant",colnames(dep_rowData),fixed = T)
+  #     
+  #     pval_df <- as.numeric(dep_rowData[,pval_pos])
+  #     log2fc_df <- abs(as.numeric(dep_rowData[,log2fc_pos]))
+  #     res_pval <- as.logical(pval_df < pvalue)
+  #     res_lfc <-  as.logical(log2fc_df > log2fc)
+  #     TT_pos <- which(res_pval=="TRUE" & res_lfc=="TRUE")
+  #     
+  #     res <- c()
+  #     res[1:nrow(dep_rowData)] <- "FALSE"
+  #     res[TT_pos] <- "TRUE"
+  #     res <- as.logical(res)
+  #     
+  #     dep_rowData[,sig_pos] <- res
+  #     write.csv(dep_rowData,"D:/dep_rowData.csv",quote = F)
+  #     data_rejection <- SummarizedExperiment(assays = list(assay(data_rejection)), rowData = dep_rowData, colData = colData(data_rejection))
+  #   }
+  #   data_rejection
+  # })
   
   dep <- eventReactive(input$dea_btn,{
     req(preprocessed_data())
     
+    ### if we need z-score use these code!!
+    # first_dep <- data_add_rejections()
+    
+    # if(input$normalization == "No"){
+    #   vsn_data <- rowData(first_dep)
+    #   vsn_data <- vsn_data[,c(1,5:9)]
+    #   znrom_res_test <- test_diff(ready_for_dea(), type="all")
+    #   znorm_data <- rowData(znrom_res_test)
+    #   znorm_data <- znorm_data[,c(1:4)]
+    #   norms_rowData <- merge(znorm_data,vsn_data,by="name")
+    #   first_dep <- SummarizedExperiment(assays = list(assay(znrom_res_test)), rowData = norms_rowData, colData = colData(znrom_res_test))
+    # }
+    # return(first_dep)
+    
+    type <- input$thres_type
     pvalue <- input$dea_pvalue
     log2fc <- input$dea_log2fc
+    data_rejection <- c()
     
-    data_diff <- test_diff(ready_for_dea(), type="control", control="control")
-    dep <- add_rejections(data_diff, alpha=pvalue, lfc=log2fc)
+    if(type == "P.adj"){
+      data_rejection <- add_rejections(res_test(), alpha=pvalue, lfc=log2fc)
+      dep_rowData <- rowData(data_rejection)
+      dep_rowData$name <- as.factor(dep_rowData$name)
+      data_rejection <- SummarizedExperiment(assays = list(assay(data_rejection)), rowData = dep_rowData, colData = colData(data_rejection))
+    }
+    else if(type == "P.value"){
+      data_rejection <- add_rejections(res_test(), alpha=pvalue, lfc=log2fc)
+      dep_rowData <- change_Sig(data_rejection,pvalue,log2fc)
+      data_rejection <- SummarizedExperiment(assays = list(assay(data_rejection)), rowData = dep_rowData, colData = colData(data_rejection))
+    }
+    else {
+      data_rejection <- add_rejections(res_test(), alpha=1, lfc=0)
+      dep_rowData <- rowData(data_rejection)
+      dep_rowData$name <- as.factor(dep_rowData$name)
+      data_rejection <- SummarizedExperiment(assays = list(assay(data_rejection)), rowData = dep_rowData, colData = colData(data_rejection))
+    } 
+    return(data_rejection)
+  })
+  
+  volcano_input <- reactive({
+    condition <- dep()$condition
+    case_name <- condition[1]
+    ctrl_name <- condition[length(condition)]
+    contrast <- paste0(case_name,"_vs_", ctrl_name)
+    
+    dep_rowData <- rowData(dep())
+    pv_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
+    lfc_pos <- grep("diff",colnames(dep_rowData),fixed = T)
+    
+    input_vc <- data_frame(name=dep_rowData$name, lfc=dep_rowData[,lfc_pos], 
+                           p=-log10(as.numeric(dep_rowData[,pv_pos])), sig=dep_rowData$significant)
+    plot_volcano(dep(), contrast=contrast, label_size=2, add_names=F) + 
+      geom_point(data = filter(input_vc,sig), aes(lfc, p), color = "red", size= 2)
   })
   
   pca_input <- reactive({
@@ -406,43 +597,52 @@ shinyServer(function(input,output, session){
   })
   
   correlation_input <- reactive({
-    plot_cor(dep(), significant = T, pal="Spectral", lower=-1, upper=1, indicate=c("condition"))
+    plot_cor(dep(), significant = T, pal="Blues", lower=-1, upper=1, indicate=c("condition"))
   })
   
   heatmap_input <- reactive({
-    col_limit <- length(total_samples())
-    plot_heatmap(dep(), type="centered", kmeans=T, k=6,
-                 col_limit=4, show_row_names=F, indicate=c("condition"))
-  })
-  
-  volcano_input <- reactive({
-    plot_volcano(dep(), contrast="case_vs_control", label_size=2, add_names=T)
+    plot_heatmap(dep(), type="centered", kmeans=T, k=input$dea_clusterNum, 
+                 col_limit=2, show_row_names=F, indicate=c("condition"))
   })
   
   data_results <- reactive({
     data_results <- get_results(dep())
   })
   
+  output$volcano_info <- DT::renderDataTable({
+    dep_rowData <- rowData(dep())
+    pv_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
+    lfc_pos <- grep("diff",colnames(dep_rowData),fixed = T)
+    
+    input_vc <- data_frame(name=dep_rowData$name, lfc=dep_rowData[,lfc_pos], 
+                           p=-log10(as.numeric(dep_rowData[,pv_pos])), sig=dep_rowData$significant)
+    
+    input_vc <- data.frame(input_vc)
+    # input_vc <- input_vc %>% filter(input_vc, sig)
+    df <- brushedPoints(input_vc, input$volcano_brush, xvar="lfc", yvar = "p")
+    return(df)
+  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
+  
   
   addTimeLine <-  function(timeLine){
     output$timeline <- renderUI({
       timelineBlock(
         reversed = F,
-        timelineEnd(color = "gray"),
+        timelineEnd(icon="hourglass-start", color = "gray"),
         lapply(1:nrow(timeLine), FUN = function(i){
           tagList(
             timelineItem(
-              icon = "file-upload",
+              icon = timeLine$icon[i],
               color = timeLine$color[i],
               time = timeLine$time[i],
               tags$h4(timeLine$step[i]),
               footer= timeLine$info[i]
               
             )
-            ,timelineLabel(paste0("# of proteins : ",timeLine$sample_num[i]), color = "olive")
+            ,timelineLabel(paste0("# of proteins : ",timeLine$sample_num[i]), color = "purple")
           )
         }),
-        timelineStart(color = "gray")
+        timelineStart(icon="hourglass-end", color = "gray")
       )
     })
   } # End of addTimeLine

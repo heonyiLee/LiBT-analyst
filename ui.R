@@ -26,14 +26,14 @@ ui <- function(request) {shinyUI(
       )
     ), # End of dashboardSidebar
     body = dashboardBody(
-      
       tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css"),
                 tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css"),
                 tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
       tags$head(tags$script(src="body.js")),
       box(
+        id="data_table",
         solidHeader = T,
-        width = 11,
+        width = 12,
         withSpinner(DT::dataTableOutput("uploaded_file_header"))
       ), # End of uploaded file data table
       # box(
@@ -44,30 +44,31 @@ ui <- function(request) {shinyUI(
       box(
         id = "pca_plot_box",
         solidHeader = T,
-        width = 4,
+        width = 6,
         plotOutput("pca_plot"),
         downloadButton("download_pca", "Save_png")
       ),
       box(
+        id = "volcano_box",
+        solidHeader = T,
+        width = 6,
+        plotOutput("volcano_plot", brush = "volcano_brush"),
+        DT::dataTableOutput("volcano_info"),
+        downloadButton("download_volcano", "Save_png")
+      ),
+      box(
         id = "correlation_matrix_box",
         solidHeader = T,
-        width = 4,
+        width = 6,
         plotOutput("correlation_matrix"),
         downloadButton("download_correlation", "Save_png")
       ),
       box(
         id = "heatmap_box",
         solidHeader = T,
-        width = 4,
+        width = 6,
         plotOutput("heatmap"),
         downloadButton("download_heatmap", "Save_png")
-      ),
-      box(
-        id = "volcano_box",
-        solidHeader = T,
-        width = 4,
-        plotOutput("volcano_plot"),
-        downloadButton("download_volcano", "Save_png")
       )
       ,useShinyalert(),
     ), # End of dashboardBody
@@ -152,17 +153,17 @@ ui <- function(request) {shinyUI(
                   "Use_imputation" = radioButtons("imputation", label="Choose Imputation",
                                                   choiceNames = list(HTML("QRILC<br/>(quantile regression-based<br/>left-censored function)"),
                                                                      HTML("MinProb<br/>(left-shifted Gaussian distribution)"), 
-                                                                     HTML("KNN<br/>(k-nearest neighbour approach"),
+                                                                     HTML("Man<br/>(manually defined<br/>left-shifted Gaussian distribution)"),
                                                                      HTML("Constant<br/>(replace with zero value)")),
-                                                  choiceValues = list("QRILC", "MinProb", "knn", "zero")),
-                                                                 # choices = list("Normal distribution" = "normal_distribution",
-                                                                 #                "Constant" = "constant",
-                                                                 #                "NaN"="nan")),
+                                                  choiceValues = list("QRILC", "MinProb", "man", "zero")),
+                  # choices = list("Normal distribution" = "normal_distribution",
+                  #                "Constant" = "constant",
+                  #                "NaN"="nan")),
                   "Use_normalization" = radioButtons("normalization", label="Choose method of normalization",
-                                                     choices = list("YES" = "YES",
-                                                                    "NO" = "NO"))
-                                                                    # choices = list("Width distribution" = "quantile",
-                                                                    #                "Z-score"="zscore", "none" = "none"))
+                                                     choices = list("Yes" = "Yes",
+                                                                    "No" = "No"))
+                  # choices = list("Width distribution" = "quantile",
+                  #                "Z-score"="zscore", "none" = "none"))
                 ),
                 input_id = "use_options"
               ),
@@ -182,7 +183,7 @@ ui <- function(request) {shinyUI(
         icon="chart-bar",
         active = F,
         gradientBox(
-          title = HTML("Differential <br/>experimental analysis"),
+          title = HTML("Differential <br/>experimental analysis <br/><br/>_Test"),
           width = 12,
           icon = "chart-bar",
           gradientColor = "green",
@@ -191,12 +192,31 @@ ui <- function(request) {shinyUI(
           footer = fluidRow(
             uiOutput("dea_case"),
             uiOutput("dea_control"),
-            numericInput("dea_pvalue", label = HTML("Set the threshold <br/>for the adjusted P-value"),
+            radioButtons("test_method", label="Choose test method", 
+                         choices = list("T.Test" = "T.Test", "Ranksum-Wilcoxon" = "Ranksum-Wilcoxon", "edgeR" = "edgeR", "Limma" = "Limma")),
+            radioButtons("padj_method", label="Choose p.adj method", 
+                         choices = list("FDR" = "fdr", "Bonferroni" = "bonferroni")),
+            actionButton("test_btn", "Start DEA")
+          )
+        ),
+        gradientBox(
+          title = HTML("Differential <br/>experimental analysis <br/><br/>_Visulization"),
+          width = 12,
+          icon = "chart-bar",
+          gradientColor = "green",
+          boxToolSize = "md",
+          closable = F,
+          footer = fluidRow(
+            radioButtons("thres_type", label="Choose threshold type", 
+                         choices = list("P.adj" = "P.adj", "P.value" = "P.value", "None" = "none")),
+            numericInput("dea_pvalue", label = HTML("Set the threshold <br/>for the adjusted P-value or P-value"),
                          value=0.05),
             numericInput("dea_log2fc", label = HTML("Set the threshold <br/>for the log2 fold change"),
                          value=1.5),
+            numericInput("dea_clusterNum", label = HTML("Set a number of cluster <br/>for heatmap"),
+                         value=3),
             tags$hr(),
-            actionButton("dea_btn", "Start DEA")
+            actionButton("dea_btn", "Start Draw")
           )
         ) # End of DEP box
       )
