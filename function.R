@@ -185,9 +185,20 @@ get_main_data_T <- function(data,normalization) {
   main_data <- data[,main_pos]
   cn <- colnames(main_data)
   
+  # if(normalization == "T"){
+  #   nor_pos <- grep("Normalized",cn)
+  #   main_data <- main_data[,-nor_pos]
+  # } else{
+  #   origin_pos <- grep("Abundance", cn)
+  #   nor_pos <- grep("Normalized",cn)
+  #   nor_pos <- setdiff(origin_pos, nor_pos)
+  #   main_pos <- c(1,nor_pos)
+  #   main_data <- main_data[,main_pos]
+  # }
   if(normalization == "T"){
     nor_pos <- grep("Normalized",cn)
-    main_data <- main_data[,-nor_pos]
+    main_pos <- c(1,nor_pos)
+    main_data <- main_data[,main_pos]
   } else{
     origin_pos <- grep("Abundance", cn)
     nor_pos <- grep("Normalized",cn)
@@ -265,7 +276,7 @@ make_case_samples_T <- function(data) {
   TMT_marker <- c("126","127C","127N","128C","128N","129C","129N","130C","130N","131")
   for(i in 1:length(TMT_marker)){
     col_pos <- str_locate(temp_col[grep(TMT_marker[i],temp_col)],TMT_marker[i]) 
-    temp <- c(temp,substr(temp_col[i],col_pos[1,1],nchar(temp_col)))
+    temp <- c(temp,substr(temp_col[i],col_pos[1,1],(nchar(temp_col)+1)))
   }
   
   col <- data.frame(id=temp)
@@ -280,7 +291,7 @@ make_case_samples_T <- function(data) {
 
 make_case_samples_diffT <- function(data,normalization) {
   cn <- colnames(data)
-  data$Accession <- as.character(data$Accession)
+  data$ID <- as.character(data$ID)
   data_class <- sapply(data,class)
   rm_pos <- grep("factor",data_class) 
   rm_pos <- c(rm_pos,grep("Ratio",cn))
@@ -288,7 +299,7 @@ make_case_samples_diffT <- function(data,normalization) {
   data <- data[,-rm_pos]
   cn <- cn[-rm_pos]
   
-  main_pos <- grep("Accession",cn)
+  main_pos <- grep("ID",cn)
   
   TMT_marker <- c("126","127C","127N","128C","128N","129C","129N","130C","130N","131")
   for(i in 1:length(TMT_marker)){
@@ -318,7 +329,7 @@ make_case_samples_diffT <- function(data,normalization) {
   temp <- c()
   for(j in 1:length(TMT_marker)){
     col_pos <- str_locate(temp_col[grep(TMT_marker[j],temp_col)],TMT_marker[j]) 
-    temp <- c(temp,substr(temp_col[j],col_pos[1,1],nchar(temp_col)))
+    temp <- c(temp,substr(temp_col[j],col_pos[1,1],(nchar(temp_col)+1)))
   }
   
   col <- data.frame(id=temp)

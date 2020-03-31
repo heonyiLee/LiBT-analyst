@@ -3,6 +3,7 @@ library(readr)
 library(stringr)
 library(DEP)
 library(sortable)
+library(SummarizedExperiment)
 
 
 source("function.R")
