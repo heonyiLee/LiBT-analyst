@@ -30,47 +30,49 @@ ui <- function(request) {shinyUI(
                 tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css"),
                 tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
       tags$head(tags$script(src="body.js")),
-      box(
-        id="data_table",
-        solidHeader = T,
-        width = 12,
-        withSpinner(DT::dataTableOutput("uploaded_file_header"))
-      ), # End of uploaded file data table
-      # box(
-      #   solidHeader = T,
-      #   width = 4,
-      #   withSpinner(DT::dataTableOutput("result_table_header"))
-      # ),
-      box(
-        id = "pca_plot_box",
-        solidHeader = T,
-        width = 6,
-        plotOutput("pca_plot"),
-        downloadButton("download_pca", "Save_png")
-      ),
-      box(
-        id = "volcano_box",
-        solidHeader = T,
-        width = 6,
-        plotOutput("volcano_plot", brush = "volcano_brush"),
-        DT::dataTableOutput("volcano_info"),
-        downloadButton("download_volcano", "Save_png")
-      ),
-      box(
-        id = "correlation_matrix_box",
-        solidHeader = T,
-        width = 6,
-        plotOutput("correlation_matrix"),
-        downloadButton("download_correlation", "Save_png")
-      ),
-      box(
-        id = "heatmap_box",
-        solidHeader = T,
-        width = 6,
-        plotOutput("heatmap"),
-        downloadButton("download_heatmap", "Save_png")
+      fluidRow(
+        box(
+          id="data_table",
+          solidHeader = T,
+          width = 12,
+          withSpinner(DT::dataTableOutput("uploaded_file_header"))
+        ), # End of uploaded file data table
+        # box(
+        #   solidHeader = T,
+        #   width = 4,
+        #   withSpinner(DT::dataTableOutput("result_table_header"))
+        # ),
+        box(
+          id = "pca_plot_box",
+          solidHeader = T,
+          width = 6,
+          plotOutput("pca_plot"),
+          downloadButton("download_pca", "Save_png")
+        ),
+        box(
+          id = "volcano_box",
+          solidHeader = T,
+          width = 6,
+          plotOutput("volcano_plot", brush = "volcano_brush"),
+          DT::dataTableOutput("volcano_info"),
+          downloadButton("download_volcano", "Save_png")
+        ),
+        box(
+          id = "correlation_matrix_box",
+          solidHeader = T,
+          width = 6,
+          plotOutput("correlation_matrix"),
+          downloadButton("download_correlation", "Save_png")
+        ),
+        box(
+          id = "heatmap_box",
+          solidHeader = T,
+          width = 6,
+          plotOutput("heatmap"),
+          downloadButton("download_heatmap", "Save_png")
+        )
+        ,useShinyalert()
       )
-      ,useShinyalert(),
     ), # End of dashboardBody
     rightsidebar = rightSidebar(
       id = "entireRightsidebar",

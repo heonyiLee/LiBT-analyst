@@ -4,12 +4,7 @@
    $("#file_upload_btn").click(function(){
      $(".load-container").show();
    });
-    
-   $(".content-wrapper").css('min-height',"1500px");
-   $(window).resize(function(){
-     $(".content-wrapper").css('min-height',"1500px");
-   });
-   
+
    content_width = $(".content").css('width');
    rightbar_width = $("#controlbar aside").css('width');
    size_table = parseInt(content_width) - parseInt(rightbar_width) - 30;

@@ -169,10 +169,28 @@ shinyServer(function(input,output, session){
         assay(data_se)}, 
         options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
       
-      vv <- as.character(as.numeric(input$valid_value)*100)
-      tmp <- paste0("* Valid value : ", paste0(vv,"%"), "\n",
-                    "* Imputation : " , str_to_title(input$imputation), "\n",
-                    "* Normalization : ", str_to_title(input$normalization))
+      tmp <- c()
+      preprocessing_options <- input$use_options
+      for(i in 1:length(preprocessing_options)) {
+        if(i != 1){
+          tmp <- paste0(tmp,"\n")
+        }
+        switch(preprocessing_options[i],
+               "Use_valid_value" = {
+                 vv <- as.character(as.numeric(input$valid_value)*100)
+                 tmp <- paste0(tmp,"* Valid value : ", paste0(vv,"%"))},
+               "Use_imputation" = {
+                 tmp <- paste0(tmp,"* Imputation : " , str_to_title(input$imputation))},
+               "Use_normalization" = {
+                 tmp <- paste0(tmp,"* Normalization : ", str_to_title(input$normalization))},
+               NULL = {
+                 tmp <- tmp
+               }
+        )
+      }
+      # tmp <- paste0("* Valid value : ", paste0(vv,"%"), "\n",
+      #               "* Imputation : " , str_to_title(input$imputation), "\n",
+      #               "* Normalization : ", str_to_title(input$normalization))
       info <- paste0(info,tmp,"\n")
       newTL <- data.frame(step="Preprocessing",
                           info=info,
