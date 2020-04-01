@@ -178,19 +178,17 @@ shinyServer(function(input,output, session){
         switch(preprocessing_options[i],
                "Use_valid_value" = {
                  vv <- as.character(as.numeric(input$valid_value)*100)
-                 tmp <- paste0(tmp,"* Valid value : ", paste0(vv,"%"))},
+                 tmp <- paste0(tmp,i,". Valid value : ", paste0(vv,"%"))},
                "Use_imputation" = {
-                 tmp <- paste0(tmp,"* Imputation : " , str_to_title(input$imputation))},
+                 tmp <- paste0(tmp,i,". Imputation : " , str_to_title(input$imputation))},
                "Use_normalization" = {
-                 tmp <- paste0(tmp,"* Normalization : ", str_to_title(input$normalization))},
+                 tmp <- paste0(tmp,i,". Normalization : ", str_to_title(input$normalization))},
                NULL = {
                  tmp <- tmp
                }
         )
       }
-      # tmp <- paste0("* Valid value : ", paste0(vv,"%"), "\n",
-      #               "* Imputation : " , str_to_title(input$imputation), "\n",
-      #               "* Normalization : ", str_to_title(input$normalization))
+
       info <- paste0(info,tmp,"\n")
       newTL <- data.frame(step="Preprocessing",
                           info=info,
