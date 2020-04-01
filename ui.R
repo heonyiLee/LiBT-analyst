@@ -50,19 +50,19 @@ ui <- function(request) {shinyUI(
           downloadButton("download_pca", "Save_png")
         ),
         box(
+          id = "correlation_matrix_box",
+          solidHeader = T,
+          width = 6,
+          plotOutput("correlation_matrix"),
+          downloadButton("download_correlation", "Save_png")
+        ),
+        box(
           id = "volcano_box",
           solidHeader = T,
           width = 6,
           plotOutput("volcano_plot", brush = "volcano_brush"),
           DT::dataTableOutput("volcano_info"),
           downloadButton("download_volcano", "Save_png")
-        ),
-        box(
-          id = "correlation_matrix_box",
-          solidHeader = T,
-          width = 6,
-          plotOutput("correlation_matrix"),
-          downloadButton("download_correlation", "Save_png")
         ),
         box(
           id = "heatmap_box",

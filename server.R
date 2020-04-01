@@ -574,7 +574,7 @@ shinyServer(function(input,output, session){
     if(type == "P.adj"){
       data_rejection <- add_rejections(res_test(), alpha=pvalue, lfc=log2fc)
       dep_rowData <- rowData(data_rejection)
-      dep_rowData$name <- as.factor(dep_rowData$name)
+      dep_rowData$name <- as.character(dep_rowData$name)
       data_rejection <- SummarizedExperiment(assays = list(assay(data_rejection)), rowData = dep_rowData, colData = colData(data_rejection))
     }
     else if(type == "P.value"){
