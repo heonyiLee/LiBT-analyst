@@ -293,7 +293,7 @@ make_case_samples_diffT <- function(data,normalization) {
   nor_pos <- grep("Normalized",cn)
   main_pos <- c(1,nor_pos)
   main_data <- main_data[,main_pos]
-
+  
   main_data <- na.omit(main_data)
   main_data <- main_data[,c(2:ncol(main_data))]
   temp_col <- colnames(main_data)
@@ -310,15 +310,15 @@ make_case_samples_diffT <- function(data,normalization) {
   col2 <- col[((nrow(col)/2)+1):nrow(col),]
   
   col <- union(col1, col2)
-
+  
   return(col)
 }
 
 make_expDesignData <- function(case,ctrl) {
   label <- c(case,ctrl)
-
+  
   condition <- make_condition(case,ctrl)
-
+  
   # condition <- c()
   # condition[1:length(case)] <- group_name[1]
   # condition[(length(case)+1):(length(case)+length(ctrl))] <- group_name[2]
@@ -358,7 +358,7 @@ make_condition <- function(case,ctrl){
   ctrl_name <- gsub("\\d+","",ctrl_name)
   
   condition <- c(case_name,ctrl_name)
-
+  
   return(condition)
 }
 
@@ -474,14 +474,14 @@ test <- function(data,design,p_option,q_option){
     
     edr<-DGEList(counts=data, genes=rownames(data))
     noredr<-calcNormFactors(edr, method="TMM")
-  
+    
     disedr<-estimateDisp(noredr, design)
     fitq<-glmQLFit(disedr,design)
     glf<-glmQLFTest(fitq)
     res_edgeR<-glf$table
     pval <- res_edgeR$PValue
   }
- 
+  
   qval <- p.adjust(pval,method = q_option)
   df <- data.frame(pval=pval,padj=qval)
   return(df)

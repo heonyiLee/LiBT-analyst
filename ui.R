@@ -52,7 +52,8 @@ ui <- function(request) {shinyUI(
         id = "volcano_box",
         solidHeader = T,
         width = 6,
-        plotOutput("volcano_plot"),
+        plotOutput("volcano_plot", brush = "volcano_brush"),
+        DT::dataTableOutput("volcano_info"),
         downloadButton("download_volcano", "Save_png")
       ),
       box(

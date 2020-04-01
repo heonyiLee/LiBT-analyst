@@ -18,7 +18,7 @@ shinyServer(function(input,output, session){
   info <- c()
   sample_num <- c()
   time <- c()
-
+  
   ############################
   ##      RENDERING         ##
   ############################
@@ -107,15 +107,15 @@ shinyServer(function(input,output, session){
           info <- paste0("* Numerical Filter\n  : Peptides = 0\n    Intensity = 0\n",
                          "* Categorical Filter\n", "  : ", option)
           newTL <- data.frame(step="Data Input",info=info,
-                                  sample_num=as.numeric(nrow(render_df)),
-                                  time=as.character(Sys.time()),color="maroon",icon="file-upload")
+                              sample_num=as.numeric(nrow(render_df)),
+                              time=as.character(Sys.time()),color="maroon",icon="file-upload")
           timeLine <<- rbind(timeLine,newTL)
           addTimeLine(timeLine)
         } else{
           info <- paste0("* Is normalized ? : ", input$TMT_input_option)
           newTL <- data.frame(step="Data Input",info=info,
-                                  sample_num=as.numeric(nrow(render_df)),
-                                  time=as.character(Sys.time()),color="maroon",icon="file-upload")
+                              sample_num=as.numeric(nrow(render_df)),
+                              time=as.character(Sys.time()),color="maroon",icon="file-upload")
           timeLine <<- rbind(timeLine,newTL)
           addTimeLine(timeLine)
         }
@@ -225,8 +225,8 @@ shinyServer(function(input,output, session){
       info <- paste0("* Test Method : ", input$test_method,"\n",
                      "* P.adj Method : ", input$padj_method)
       newTL <- data.frame(step="DEA_Test",info=info,
-                              sample_num=as.numeric(nrow(assay(res_test()))),
-                              time=as.character(Sys.time()),color="green",icon="chart-bar")
+                          sample_num=as.numeric(nrow(assay(res_test()))),
+                          time=as.character(Sys.time()),color="green",icon="chart-bar")
       timeLine <<- rbind(timeLine,newTL)
       addTimeLine(timeLine)
       
@@ -268,7 +268,7 @@ shinyServer(function(input,output, session){
         pca_input()
       })
     }
-   
+    
     if(length(sig)==0){
       shinyalert("Ther is no DEP!", "Change threshold value or threshold type", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
@@ -283,24 +283,59 @@ shinyServer(function(input,output, session){
       })
       
       # if(!is.null(heatmap_input())){
-        shinyalert("Complete Visualization!", type="success", timer = 10000,
-                   closeOnClickOutside = T, closeOnEsc = T)
-        shinyjs::show("correlation_matrix")
-        shinyjs::show("heatmap")  
+      shinyalert("Complete Visualization!", type="success", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+      shinyjs::show("correlation_matrix")
+      shinyjs::show("heatmap")  
       # }
     }
     
     data_results()
   })
   
-  # output$download_frequency_svg <- downloadHandler(
-  #   filename = function() {"frequency_plot.png"},
-  #   content = function(file) {
-  #     png(file)
-  #     print(plot_imputation(data_norm(), data_imp()))
-  #     dev.off()
-  #   }
-  # )
+  output$download_pca <- downloadHandler(
+    filename = function() {paste0("PCA_plot_", Sys.Date(), ".png")},
+    content = function(file) {
+      if(!is.null(pca_input())){
+        png(file)
+        print(pca_input())
+        dev.off()
+      }
+    }
+  )
+  
+  output$download_heatmap <- downloadHandler(
+    filename = function() {paste0("Heatmap_", Sys.Date(), ".png")},
+    content = function(file) {
+      if(!is.null(heatmap_input())){
+        png(file)
+        print(heatmap_input())
+        dev.off()
+      }
+    }
+  )
+  
+  output$download_correlation <- downloadHandler(
+    filename = function() {paste0("Correlation_plot_", Sys.Date(), ".png")},
+    content = function(file) {
+      if(!is.null(correlation_input())){
+        png(file)
+        print(correlation_input())
+        dev.off()
+      }
+    }
+  )
+  
+  output$download_volcano <- downloadHandler(
+    filename = function() {paste0("Volcano_plot_", Sys.Date(), ".png")},
+    content = function(file) {
+      if(!is.null(volcano_input())){
+        png(file)
+        print(volcano_input())
+        dev.off()
+      }
+    }
+  )
   
   ##--------------------------------------------------- reactive/EventReactive Section
   file_input <- reactive({NULL})
@@ -456,10 +491,9 @@ shinyServer(function(input,output, session){
       
       data <- assay(data_diff)
       df <- test(data,diff_colData,input$test_method,input$padj_method)
-      write.csv(data,"D:/ttest_data.csv",quote = F)
       pval_pos <- grep("p.val",colnames(diff_rowData),fixed = T)
       padj_pos <- grep("_p.adj",colnames(diff_rowData),fixed = T)
-  
+      
       diff_rowData[,pval_pos] <- df$pval
       diff_rowData[,padj_pos] <- df$padj
       
@@ -504,7 +538,7 @@ shinyServer(function(input,output, session){
     
     ### if we need z-score use these code!!
     # first_dep <- data_add_rejections()
-   
+    
     # if(input$normalization == "No"){
     #   vsn_data <- rowData(first_dep)
     #   vsn_data <- vsn_data[,c(1,5:9)]
@@ -515,7 +549,7 @@ shinyServer(function(input,output, session){
     #   first_dep <- SummarizedExperiment(assays = list(assay(znrom_res_test)), rowData = norms_rowData, colData = colData(znrom_res_test))
     # }
     # return(first_dep)
-   
+    
     type <- input$thres_type
     pvalue <- input$dea_pvalue
     log2fc <- input$dea_log2fc
@@ -573,6 +607,20 @@ shinyServer(function(input,output, session){
   data_results <- reactive({
     data_results <- get_results(dep())
   })
+  
+  output$volcano_info <- DT::renderDataTable({
+    dep_rowData <- rowData(dep())
+    pv_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
+    lfc_pos <- grep("diff",colnames(dep_rowData),fixed = T)
+    
+    input_vc <- data_frame(name=dep_rowData$name, log2FC=dep_rowData[,lfc_pos], 
+                           `-log10P.val`=-log10(as.numeric(dep_rowData[,pv_pos])), sig=dep_rowData$significant)
+    
+    input_vc <- data.frame(input_vc)
+    # input_vc <- input_vc %>% filter(input_vc, sig)
+    df <- brushedPoints(input_vc, input$volcano_brush, xvar="log2FC", yvar = "X.log10P.val")
+    return(df)
+  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
   
   
   addTimeLine <-  function(timeLine){
