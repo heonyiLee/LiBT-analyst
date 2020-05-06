@@ -6,6 +6,7 @@ library(sortable)
 library(SummarizedExperiment)
 library(ggplot2)
 library(edgeR)
+library(enrichR)
 
 source("function.R")
 # 2019.12.30
@@ -165,9 +166,11 @@ shinyServer(function(input,output, session){
   observeEvent(input$preprocess_btn, {
     if(input$exp_design_check==TRUE) {
       data_se <- ready_for_dea()
+      # res <- round(assay(data_se),digits=2)
+      res <- assay(data_se)
       output$uploaded_file_header <- DT::renderDataTable({
-        assay(data_se)}, 
-        options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
+        DT::datatable(res,options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15))) %>% DT::formatRound(colnames(res), digits=2)
+      }) 
       
       tmp <- c()
       preprocessing_options <- input$use_options
@@ -248,7 +251,6 @@ shinyServer(function(input,output, session){
       
     }
   })
-  
   
   observeEvent(input$dea_btn, {
     withProgress(message = 'Plots calculations are in progress',
@@ -353,6 +355,19 @@ shinyServer(function(input,output, session){
     }
   )
   
+  observeEvent(input$gsa_btn,{
+    if(!is.null(dep())){
+      result_gsa()
+      bp <- result_gsa_GOBP()
+      cc <- result_gsa_GOCC()
+      mf <- result_gsa_GOMF()
+      kg <- result_gsa_Kegg()
+    }else{
+      shinyalert("Ther is no DEP!", "Change threshold value or threshold type in DEA section", type="error", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+    }
+  })
+  
   ##--------------------------------------------------- reactive/EventReactive Section
   file_input <- reactive({NULL})
   file_input <- eventReactive(input$fileBrowser, {
@@ -387,7 +402,6 @@ shinyServer(function(input,output, session){
   main_data <- reactive({NULL})
   main_data <- eventReactive(input$file_upload_btn, {
     temp_df <- file_input()
-    
     file_type <- input$file_type
     if(file_type=="TMT"){
       temp_df <- get_main_data_T(temp_df,input$TMT_input_option)
@@ -396,6 +410,7 @@ shinyServer(function(input,output, session){
       temp_df <- filter_with_option(checked_option, temp_df)
       temp_df <- get_main_data_LiB(temp_df, file_type)
     }
+    
   })
   
   
@@ -624,7 +639,7 @@ shinyServer(function(input,output, session){
     data_results <- get_results(dep())
   })
   
-  output$volcano_info <- DT::renderDataTable({
+  output$volcano_info <- DT::renderDataTable(DT::datatable({
     dep_rowData <- rowData(dep())
     pv_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
     lfc_pos <- grep("diff",colnames(dep_rowData),fixed = T)
@@ -635,9 +650,55 @@ shinyServer(function(input,output, session){
     input_vc <- data.frame(input_vc)
     # input_vc <- input_vc %>% filter(input_vc, sig)
     df <- brushedPoints(input_vc, input$volcano_brush, xvar="log2FC", yvar = "X.log10P.val")
-    return(df)
-  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
+    # return(df)
+  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15))) %>%  DT::formatRound(c(2:3),digits=2))
   
+  
+  result_gsa <- reactive({
+    data <- rowData(dep())
+    res_gsa <- gsa(data,input$gsa_set,input$gsa_tool)
+    return(res_gsa)
+  })
+  
+  result_gsa_GOBP <- reactive({
+    res_gsa <- result_gsa()
+    if(!is.null(res_gsa)){
+      if(input$gsa_tool == "enrichR"){
+        gobp<-res_gsa[["GO_Biological_Process_2018"]]
+      }
+    }
+    return(gobp)
+  })
+  
+  result_gsa_GOCC <- reactive({
+    res_gsa <- result_gsa()
+    if(!is.null(res_gsa)){
+      if(input$gsa_tool == "enrichR"){
+        gocc<-res_gsa[["GO_Cellular_Component_2018"]]
+      }
+    }
+    return(gocc)
+  })
+  
+  result_gsa_GOMF <- reactive({
+    res_gsa <- result_gsa()
+    if(!is.null(res_gsa)){
+      if(input$gsa_tool == "enrichR"){
+        gomf<-res_gsa[["GO_Molecular_Function_2018"]]
+      }
+    }
+    return(gomf)
+  })
+  
+  result_gsa_Kegg <- reactive({
+    res_gsa <- result_gsa()
+    if(!is.null(res_gsa)){
+      if(input$gsa_tool == "enrichR"){
+        kegg<-res_gsa[["KEGG_2019_Human"]]
+      }
+    }
+    return(kegg)
+  })
   
   addTimeLine <-  function(timeLine){
     output$timeline <- renderUI({

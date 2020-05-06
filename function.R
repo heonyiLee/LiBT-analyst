@@ -127,13 +127,13 @@ get_main_data_LiB <- function(data, file_type) {
     main_pos <- grep("iBAQ.",cn_data)
   }
   
-  main <- data[,main_pos]
-  
+  main_data <- data[,main_pos]
+
   unique_pos <- grep("Unique.peptides",cn_data)
   Unique_peptides <- data[,unique_pos]
   Sequence_coverage <- data$Sequence.coverage....
   
-  main_df <- cbind(ProteinID,GeneName,main,Unique_peptides,Sequence_coverage)
+  main_df <- cbind(ProteinID,GeneName,main_data,Unique_peptides,Sequence_coverage)
   
   isDup_Gene <- main_df$GeneName %>% duplicated() %>% any()
   if(isDup_Gene==T){
@@ -192,7 +192,7 @@ get_main_data_T <- function(data,normalization) {
   }
   
   main_data <- na.omit(main_data)
-  
+
   acc <- main_data$Accession
   id_pos <- grep("-",acc)
   acc_id <- acc[id_pos]
@@ -399,6 +399,9 @@ use_valid_option <- function(data, case, control, option) {
   valid_num <- length(case) * option
   
   data_filt <- filter_missval(data, thr=valid_num)
+  # res <- assay(data_filt)
+  # res <- round(res,digits = 2)
+  # data_filt <- SummarizedExperiment(assays = list(as.data.frame(res)), rowData = rowData(data_filt), colData = colData(data_filt))
   
   return(data_filt)
 }
@@ -435,6 +438,7 @@ use_imputation_option <- function(data, case, control, option) {
          "zero" =
            {data_imp <- impute(data, fun="zero")}
   )
+
   return(data_imp)
 }
 
@@ -456,7 +460,7 @@ test <- function(data,design,p_option,q_option){
     pval <- as.data.frame(pval)
     pval <- unlist(pval$p.value)
   }
-  else if(p_option == "Ranksum-Wilcoxon"){
+  else if(p_option == "Wilcoxon-Ranksum"){
     case_df <- t(case_dt)
     case_df <- as.data.frame(case_df)
     ctrl_df <- t(ctrl_dt)
@@ -507,4 +511,27 @@ change_Sig <- function(data_rejection,pvalue,log2fc){
   dep_rowData[,sig_pos] <- res
   dep_rowData$name <- as.character(dep_rowData$name)
   return(dep_rowData)
+}
+
+gsa <- function(data,set,tool){
+  data <- data[,c(1,7)]
+  colnames(data) <- c("genes","log2fc")
+  if(set == "caseup"){
+    genes <- data$genes[data$log2fc > 0]
+  } else{
+    genes <- data$genes[data$log2fc < 0]
+  }
+  
+  if(tool == "enrichR"){
+    res_gsa <- enrichR(genes)
+    return(res_gsa)
+  } else{
+    
+  }
+}
+
+enrichR <- function(genes){
+  dbs <- c("GO_Molecular_Function_2018", "GO_Cellular_Component_2018", "GO_Biological_Process_2018", "KEGG_2019_Human") #, "WikiPathways_2016", "Reactome_2016"
+  res_er<-enrichr(genes,dbs)
+  return(res_er)
 }

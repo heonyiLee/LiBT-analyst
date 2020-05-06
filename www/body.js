@@ -8,7 +8,7 @@
    content_width = $(".content").css('width');
    rightbar_width = $("#controlbar aside").css('width');
    size_table = parseInt(content_width) - parseInt(rightbar_width) - 30;
-   size_plot = (size_table / 2);
+   size_plot = (size_table / 2) - 10;
       
    $(".nav a").click(function(){
       
@@ -18,6 +18,10 @@
         dt_parent1 = $("#data_table").parent('div');
         dt_parent2 = dt_parent1.parent('div');
         dt_parent2.css('width',size_table);
+        
+        pt_parent1 = $("#plot_tabBox").parent('div');
+        pt_parent2 = pt_parent1.parent('div');
+        pt_parent2.css('width',size_table);
         
         //pca_plot_box
         pp_parent1 = $("#pca_plot_box").parent('div');
@@ -44,6 +48,10 @@
         dt_parent1 = $("#data_table").parent('div');
         dt_parent2 = dt_parent1.parent('div');
         dt_parent2.css('width','');
+        
+          pt_parent1 = $("#plot_tabBox").parent('div');
+        pt_parent2 = pt_parent1.parent('div');
+        pt_parent2.css('width','');
         
         //pca_plot_box
         pp_parent1 = $("#pca_plot_box").parent('div');

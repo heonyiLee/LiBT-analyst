@@ -37,43 +37,83 @@ ui <- function(request) {shinyUI(
           width = 12,
           withSpinner(DT::dataTableOutput("uploaded_file_header"))
         ), # End of uploaded file data table
-        # box(
-        #   solidHeader = T,
-        #   width = 4,
-        #   withSpinner(DT::dataTableOutput("result_table_header"))
-        # ),
-        box(
-          id = "pca_plot_box",
-          solidHeader = T,
-          width = 6,
-          plotOutput("pca_plot"),
-          downloadButton("download_pca", "Save_png")
-        ),
-        box(
-          id = "correlation_matrix_box",
-          solidHeader = T,
-          width = 6,
-          plotOutput("correlation_matrix"),
-          downloadButton("download_correlation", "Save_png")
-        ),
-        box(
-          id = "volcano_box",
-          solidHeader = T,
-          width = 6,
-          plotOutput("volcano_plot", brush = "volcano_brush"),
-          DT::dataTableOutput("volcano_info"),
-          downloadButton("download_volcano", "Save_png")
-        ),
-        box(
-          id = "heatmap_box",
-          solidHeader = T,
-          width = 6,
-          plotOutput("heatmap"),
-          downloadButton("download_heatmap", "Save_png")
+        tabBox(
+          id="plot_tabBox",
+          width = 12,
+          tabPanel("Results of DEA",
+                   fluidRow(
+                     # box(
+                     #   solidHeader = T,
+                     #   width = 4,
+                     #   withSpinner(DT::dataTableOutput("result_table_header"))
+                     # ),
+                     box(
+                       id = "pca_plot_box",
+                       solidHeader = T,
+                       width = 6,
+                       plotOutput("pca_plot"),
+                       downloadButton("download_pca", "Save_png")
+                     ),
+                     box(
+                       id = "correlation_matrix_box",
+                       solidHeader = T,
+                       width = 6,
+                       plotOutput("correlation_matrix"),
+                       downloadButton("download_correlation", "Save_png")
+                     ),
+                     box(
+                       id = "volcano_box",
+                       solidHeader = T,
+                       width = 6,
+                       plotOutput("volcano_plot", brush = "volcano_brush"),
+                       DT::dataTableOutput("volcano_info"),
+                       downloadButton("download_volcano", "Save_png")
+                     ),
+                     box(
+                       id = "heatmap_box",
+                       solidHeader = T,
+                       width = 6,
+                       plotOutput("heatmap"),
+                       downloadButton("download_heatmap", "Save_png")
+                     )
+                     ,useShinyalert()
+                   )
+          ),#tab1 end
+          tabPanel("Results of GSA",
+                   fluidRow(
+                     box(
+                       id = "gobp_box",
+                       solidHeader = T,
+                       width = 6,
+                       plotOutput("gobp_plot"),
+                       downloadButton("download_gobp", "Save_GOBP")
+                     ),
+                     box(
+                       id = "gocc_box",
+                       solidHeader = T,
+                       width = 6,
+                       plotOutput("gocc_plot"),
+                       downloadButton("download_gocc", "Save_GOCC")
+                     ),
+                     box(
+                       id = "gomf_box",
+                       solidHeader = T,
+                       width = 6,
+                       plotOutput("gomf_plot"),
+                       downloadButton("download_gomf", "Save_GOMF")
+                     ),
+                     box(
+                       id = "kegg_box",
+                       solidHeader = T,
+                       width = 6,
+                       plotOutput("kegg_plot"),
+                       downloadButton("download_kegg", "Save_Kegg")
+                     )
+                     ,useShinyalert()
+                )#tab2 end
         )
-        ,useShinyalert()
       )
-    ), # End of dashboardBody
+    )), # End of dashboardBody
     rightsidebar = rightSidebar(
       id = "entireRightsidebar",
       width = 350,
@@ -195,9 +235,9 @@ ui <- function(request) {shinyUI(
             uiOutput("dea_case"),
             uiOutput("dea_control"),
             radioButtons("test_method", label="Choose test method", 
-                         choices = list("T.Test" = "T.Test", "Ranksum-Wilcoxon" = "Ranksum-Wilcoxon", "edgeR" = "edgeR", "Limma" = "Limma")),
+                         choices = list("T.Test" = "T.Test", "Wilcoxon-Ranksum" = "Wilcoxon-Ranksum", "edgeR" = "edgeR", "Limma" = "Limma")),
             radioButtons("padj_method", label="Choose p.adj method", 
-                         choices = list("FDR" = "fdr", "Bonferroni" = "bonferroni")),
+                         choices = list("Benjamini-Hocherg" = "BH", "Bonferroni" = "bonferroni")),
             actionButton("test_btn", "Start DEA")
           )
         ),
@@ -219,6 +259,41 @@ ui <- function(request) {shinyUI(
                          value=3),
             tags$hr(),
             actionButton("dea_btn", "Start Draw")
+          )
+        ) # End of DEP box
+      ),
+      rightSidebarTabContent(
+        id=4,
+        icon="chart-pie",
+        active = F,
+        gradientBox(
+          title = HTML("Gene Set Analysis <br/><br/>"),
+          width = 12,
+          icon = "chart-pie",
+          gradientColor = "yellow",
+          boxToolSize = "md",
+          closable = F,
+          footer = fluidRow(
+            uiOutput("dep_up"),
+            uiOutput("dep_down"),
+            radioButtons("gsa_set", label="Choose Data set",
+                         choices = list("Case-UP" = "caseup", "Ctrl-UP" = "casedown")),
+            radioButtons("gsa_tool", label="Choose GSA Tool", 
+                         choices = list("enrichR" = "enrichR", "DAVID" = "DAVID")),
+            actionButton("gsa_btn", "Start GSA")
+          )
+        ),
+        gradientBox(
+          title = HTML("Gene Set <br/>Enrichment Analysis <br/><br/>"),
+          width = 12,
+          icon = "chart-pie",
+          gradientColor = "yellow",
+          boxToolSize = "md",
+          closable = F,
+          footer = fluidRow(
+            radioButtons("gsea_set", label="Choose Data set", 
+                         choices = list("Case-UP" = "caseup", "Ctrl-UP" = "casedown")),
+            actionButton("gsea_btn", "Start GSEA")
           )
         ) # End of DEP box
       )
