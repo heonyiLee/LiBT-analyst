@@ -357,16 +357,58 @@ shinyServer(function(input,output, session){
   
   observeEvent(input$gsa_btn,{
     if(!is.null(dep())){
+     shinyalert("Start GSA!","Please wait for a while", type="success", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
       result_gsa()
-      bp <- result_gsa_GOBP()
-      cc <- result_gsa_GOCC()
-      mf <- result_gsa_GOMF()
-      kg <- result_gsa_Kegg()
+      result_gsa_GOBP()
+      gobp_plot()
+      result_gsa_GOCC()
+      gocc_plot()
+      result_gsa_GOMF()
+      gomf_plot()
+      result_gsa_Kegg()
+      kegg_plot()
     }else{
       shinyalert("Ther is no DEP!", "Change threshold value or threshold type in DEA section", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
     }
   })
+  
+  output$download_gobp <- downloadHandler(
+    filename = function() {paste0("GO_BP_result_", Sys.Date(), ".txt")},
+    content = function(file) {
+      if(!is.null(result_gsa_GOBP())){
+        write.table(result_gsa_GOBP(),file,row.names=F,quote=F,sep="\t")
+      }
+    }
+  )
+  
+  output$download_gocc <- downloadHandler(
+    filename = function() {paste0("GO_CC_result_", Sys.Date(), ".txt")},
+    content = function(file) {
+      if(!is.null(result_gsa_GOCC())){
+        write.table(result_gsa_GOCC(),file,row.names=F,quote=F,sep="\t")
+      }
+    }
+  )
+  
+  output$download_gomf <- downloadHandler(
+    filename = function() {paste0("GO_MF_result_", Sys.Date(), ".txt")},
+    content = function(file) {
+      if(!is.null(result_gsa_GOMF())){
+        write.table(result_gsa_GOMF(),file,row.names=F,quote=F,sep="\t")
+      }
+    }
+  )
+  
+  output$download_kegg <- downloadHandler(
+    filename = function() {paste0("Kegg_result_", Sys.Date(), ".txt")},
+    content = function(file) {
+      if(!is.null(result_gsa_Kegg())){
+        write.table(result_gsa_Kegg(),file,row.names=F,quote=F,sep="\t")
+      }
+    }
+  )
   
   ##--------------------------------------------------- reactive/EventReactive Section
   file_input <- reactive({NULL})
@@ -412,7 +454,6 @@ shinyServer(function(input,output, session){
     }
     
   })
-  
   
   total_samples <- reactive({
     df <- main_data()
@@ -654,6 +695,7 @@ shinyServer(function(input,output, session){
   }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15))) %>%  DT::formatRound(c(2:3),digits=2))
   
   
+  ########################### GSA ######################################
   result_gsa <- reactive({
     data <- rowData(dep())
     res_gsa <- gsa(data,input$gsa_set,input$gsa_tool)
@@ -670,6 +712,20 @@ shinyServer(function(input,output, session){
     return(gobp)
   })
   
+  gobp_plot <- reactive({
+    gobp <- result_gsa_GOBP()
+    gobp$P.value2 <- -log10(gobp$P.value)
+    gobp <- gobp[order(-gobp$P.value2),]
+    gobp <- gobp[c(1:input$set_nterm),]
+    output$gobp_plot <- renderPlot({
+      ggplot(data=gobp, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
+        geom_bar(stat = "identity",fill="#3c8dbc")+
+        labs(title="GO_BP",x=expression(-log10(P.value)),y="")+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
+    })
+  })
+  
   result_gsa_GOCC <- reactive({
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
@@ -678,6 +734,20 @@ shinyServer(function(input,output, session){
       }
     }
     return(gocc)
+  })
+  
+  gocc_plot <- reactive({
+    gocc <- result_gsa_GOCC()
+    gocc$P.value2 <- -log10(gocc$P.value)
+    gocc <- gocc[order(-gocc$P.value2),]
+    gocc <- gocc[c(1:input$set_nterm),]
+    output$gocc_plot <- renderPlot({
+      ggplot(data=gocc, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
+        geom_bar(stat = "identity",fill="#3c8dbc")+
+        labs(title="GO_CC",x=expression(-log10(P.value)),y="")+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
+    })
   })
   
   result_gsa_GOMF <- reactive({
@@ -690,6 +760,20 @@ shinyServer(function(input,output, session){
     return(gomf)
   })
   
+  gomf_plot <- reactive({
+    gomf <- result_gsa_GOMF()
+    gomf$P.value2 <- -log10(gomf$P.value)
+    gomf <- gomf[order(-gomf$P.value2),]
+    gomf <- gomf[c(1:input$set_nterm),]
+    output$gomf_plot <- renderPlot({
+      ggplot(data=gomf, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
+        geom_bar(stat = "identity",fill="#3c8dbc")+
+        labs(title="GO_MF",x=expression(-log10(P.value)),y="")+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
+    })
+  })
+  
   result_gsa_Kegg <- reactive({
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
@@ -698,6 +782,20 @@ shinyServer(function(input,output, session){
       }
     }
     return(kegg)
+  })
+  
+  kegg_plot <- reactive({
+    kegg <- result_gsa_Kegg()
+    kegg$P.value2 <- -log10(kegg$P.value)
+    kegg <- kegg[order(-kegg$P.value2),]
+    kegg <- kegg[c(1:input$set_nterm),]
+    output$kegg_plot <- renderPlot({
+      ggplot(data=kegg, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
+        geom_bar(stat = "identity",fill="#3c8dbc")+
+        labs(title="KEGG",x=expression(-log10(P.value)),y="")+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
+    })
   })
   
   addTimeLine <-  function(timeLine){

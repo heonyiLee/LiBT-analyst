@@ -280,6 +280,8 @@ ui <- function(request) {shinyUI(
                          choices = list("Case-UP" = "caseup", "Ctrl-UP" = "casedown")),
             radioButtons("gsa_tool", label="Choose GSA Tool", 
                          choices = list("enrichR" = "enrichR", "DAVID" = "DAVID")),
+            numericInput("set_nterm", label = HTML("Set a number of showed Term <br/>for barplot"),
+                         value=10),
             actionButton("gsa_btn", "Start GSA")
           )
         ),
