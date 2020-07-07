@@ -451,13 +451,10 @@ test <- function(data,design,p_option,q_option){
   ctrl_dt <- data[,c((case_num+1):(case_num+ctrl_num))]
   pval <- c()
   if(p_option == "T.Test"){
-    case_df <- t(case_dt)
-    case_df <- as.data.frame(case_df)
-    ctrl_df <- t(ctrl_dt)
-    ctrl_df <- as.data.frame(ctrl_df)
-    pval <- mapply(function(x,y){t.test(x,y,alternative = c("two.sided"))},case_df,ctrl_df)
-    pval <- t(pval)
-    pval <- as.data.frame(pval)
+    case_df <- as.data.frame(t(case_dt))
+    ctrl_df <-  as.data.frame((ctrl_dt))
+    pval <- mapply(function(x,y){t.test(x,y,alternative = c("two.sided"), var.equal = F)},case_df,ctrl_df)
+    pval <- as.data.frame(t(pval))
     pval <- unlist(pval$p.value)
   }
   else if(p_option == "Wilcoxon-Ranksum"){

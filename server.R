@@ -799,6 +799,7 @@ shinyServer(function(input,output, session){
   })
   
   addTimeLine <-  function(timeLine){
+    output
     output$timeline <- renderUI({
       timelineBlock(
         reversed = F,

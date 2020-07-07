@@ -22,98 +22,111 @@ ui <- function(request) {shinyUI(
       width=300,
       sidebarMenu(
         menuItem("TimeLine", selected = TRUE, icon=icon("history"),
-                 tabName = "timeline", uiOutput("timeline"))
+                 tabName = "analysis", uiOutput("timeline")),
+        menuItem("Analysis", selected = FALSE, icon=icon("chart-pie"),tabName = "analysis"),
+        menuItem("User Guide", selected = FALSE, icon=icon("info"),tabName = "user_gide",
+                 menuSubItem("Tutorial", tabName = "tutorial"))
       )
     ), # End of dashboardSidebar
     body = dashboardBody(
-      tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css"),
-                tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css"),
-                tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
-      tags$head(tags$script(src="body.js")),
-      fluidRow(
-        box(
-          id="data_table",
-          solidHeader = T,
-          width = 12,
-          withSpinner(DT::dataTableOutput("uploaded_file_header"))
-        ), # End of uploaded file data table
-        tabBox(
-          id="plot_tabBox",
-          width = 12,
-          tabPanel("Results of DEA",
-                   fluidRow(
-                     # box(
-                     #   solidHeader = T,
-                     #   width = 4,
-                     #   withSpinner(DT::dataTableOutput("result_table_header"))
-                     # ),
-                     box(
-                       id = "pca_plot_box",
-                       solidHeader = T,
-                       width = 6,
-                       plotOutput("pca_plot"),
-                       downloadButton("download_pca", "Save_png")
-                     ),
-                     box(
-                       id = "correlation_matrix_box",
-                       solidHeader = T,
-                       width = 6,
-                       plotOutput("correlation_matrix"),
-                       downloadButton("download_correlation", "Save_png")
-                     ),
-                     box(
-                       id = "volcano_box",
-                       solidHeader = T,
-                       width = 6,
-                       plotOutput("volcano_plot", brush = "volcano_brush"),
-                       DT::dataTableOutput("volcano_info"),
-                       downloadButton("download_volcano", "Save_png")
-                     ),
-                     box(
-                       id = "heatmap_box",
-                       solidHeader = T,
-                       width = 6,
-                       plotOutput("heatmap"),
-                       downloadButton("download_heatmap", "Save_png")
-                     )
-                     ,useShinyalert()
-                   )
-          ),#tab1 end
-          tabPanel("Results of GSA",
-                   fluidRow(
-                     box(
-                       id = "gobp_box",
-                       solidHeader = T,
-                       width = 6,
-                       plotOutput("gobp_plot"),
-                       downloadButton("download_gobp", "Save_GOBP")
-                     ),
-                     box(
-                       id = "gocc_box",
-                       solidHeader = T,
-                       width = 6,
-                       plotOutput("gocc_plot"),
-                       downloadButton("download_gocc", "Save_GOCC")
-                     ),
-                     box(
-                       id = "gomf_box",
-                       solidHeader = T,
-                       width = 6,
-                       plotOutput("gomf_plot"),
-                       downloadButton("download_gomf", "Save_GOMF")
-                     ),
-                     box(
-                       id = "kegg_box",
-                       solidHeader = T,
-                       width = 6,
-                       plotOutput("kegg_plot"),
-                       downloadButton("download_kegg", "Save_Kegg")
-                     )
-                     ,useShinyalert()
-                )#tab2 end
+          tags$head(tags$link(rel="stylesheet",type="text/css",href="body.css"),
+                    tags$link(rel="stylesheet",type="text/css",href="rightsidebar.css"),
+                    tags$link(rel="stylesheet",type="text/css",href="timeline.css")),
+          tags$head(tags$script(src="body.js")),
+          tabItems(
+            tabItem(
+              tabName = "analysis",
+              fluidRow(
+                box(
+                  id="data_table",
+                  solidHeader = T,
+                  width = 12,
+                  withSpinner(DT::dataTableOutput("uploaded_file_header"))
+                ), # End of uploaded file data table
+                tabBox(
+                  id="plot_tabBox",
+                  width = 12,
+                  tabPanel("Results of DEA",
+                           fluidRow(
+                             # box(
+                             #   solidHeader = T,
+                             #   width = 4,
+                             #   withSpinner(DT::dataTableOutput("result_table_header"))
+                             # ),
+                             box(
+                               id = "pca_plot_box",
+                               solidHeader = T,
+                               width = 6,
+                               plotOutput("pca_plot"),
+                               downloadButton("download_pca", "Save_png")
+                             ),
+                             box(
+                               id = "correlation_matrix_box",
+                               solidHeader = T,
+                               width = 6,
+                               plotOutput("correlation_matrix"),
+                               downloadButton("download_correlation", "Save_png")
+                             ),
+                             box(
+                               id = "volcano_box",
+                               solidHeader = T,
+                               width = 6,
+                               plotOutput("volcano_plot", brush = "volcano_brush"),
+                               DT::dataTableOutput("volcano_info"),
+                               downloadButton("download_volcano", "Save_png")
+                             ),
+                             box(
+                               id = "heatmap_box",
+                               solidHeader = T,
+                               width = 6,
+                               plotOutput("heatmap"),
+                               downloadButton("download_heatmap", "Save_png")
+                             )
+                             ,useShinyalert()
+                           )
+                  ),#tab1 end
+                  tabPanel("Results of GSA",
+                           fluidRow(
+                             box(
+                               id = "gobp_box",
+                               solidHeader = T,
+                               width = 6,
+                               plotOutput("gobp_plot"),
+                               downloadButton("download_gobp", "Save_GOBP")
+                             ),
+                             box(
+                               id = "gocc_box",
+                               solidHeader = T,
+                               width = 6,
+                               plotOutput("gocc_plot"),
+                               downloadButton("download_gocc", "Save_GOCC")
+                             ),
+                             box(
+                               id = "gomf_box",
+                               solidHeader = T,
+                               width = 6,
+                               plotOutput("gomf_plot"),
+                               downloadButton("download_gomf", "Save_GOMF")
+                             ),
+                             box(
+                               id = "kegg_box",
+                               solidHeader = T,
+                               width = 6,
+                               plotOutput("kegg_plot"),
+                               downloadButton("download_kegg", "Save_Kegg")
+                             )
+                             ,useShinyalert()
+                  )#tab2 end
+              )
+            )#End of tabBox
+          )#End of fluidRow
+        ),#End of tabItem_analysis
+        tabItem(
+          tabName = "tutorial",
+          h2("Tutorial")
         )
-      )
-    )), # End of dashboardBody
+      )#End fo tabItems_tutorial
+    ), # End of dashboardBody
     rightsidebar = rightSidebar(
       id = "entireRightsidebar",
       width = 350,
