@@ -452,8 +452,8 @@ test <- function(data,design,p_option,q_option){
   pval <- c()
   if(p_option == "T.Test"){
     case_df <- as.data.frame(t(case_dt))
-    ctrl_df <-  as.data.frame((ctrl_dt))
-    pval <- mapply(function(x,y){t.test(x,y,alternative = c("two.sided"), var.equal = F)},case_df,ctrl_df)
+    ctrl_df <-  as.data.frame(t(ctrl_dt))
+    pval <- mapply(function(x,y){t.test(x,y,alternative = c("two.sided"))},case_df,ctrl_df)
     pval <- as.data.frame(t(pval))
     pval <- unlist(pval$p.value)
   }

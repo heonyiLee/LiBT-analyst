@@ -327,7 +327,6 @@ shinyServer(function(input,output, session){
     content = function(file) {
       if(!is.null(heatmap_input())){
         png(file)
-        print(heatmap_input())
         dev.off()
       }
     }
@@ -799,7 +798,6 @@ shinyServer(function(input,output, session){
   })
   
   addTimeLine <-  function(timeLine){
-    output
     output$timeline <- renderUI({
       timelineBlock(
         reversed = F,
