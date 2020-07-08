@@ -6,6 +6,8 @@ library(sortable)
 library(SummarizedExperiment)
 library(ggplot2)
 library(edgeR)
+library(enrichR)
+library(pathview)
 
 source("function.R")
 # 2019.12.30
@@ -165,14 +167,32 @@ shinyServer(function(input,output, session){
   observeEvent(input$preprocess_btn, {
     if(input$exp_design_check==TRUE) {
       data_se <- ready_for_dea()
+      # res <- round(assay(data_se),digits=2)
+      res <- assay(data_se)
       output$uploaded_file_header <- DT::renderDataTable({
-        assay(data_se)}, 
-        options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
+        DT::datatable(res,options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15))) %>% DT::formatRound(colnames(res), digits=2)
+      }) 
       
-      vv <- as.character(as.numeric(input$valid_value)*100)
-      tmp <- paste0("* Valid value : ", paste0(vv,"%"), "\n",
-                    "* Imputation : " , str_to_title(input$imputation), "\n",
-                    "* Normalization : ", str_to_title(input$normalization))
+      tmp <- c()
+      preprocessing_options <- input$use_options
+      for(i in 1:length(preprocessing_options)) {
+        if(i != 1){
+          tmp <- paste0(tmp,"\n")
+        }
+        switch(preprocessing_options[i],
+               "Use_valid_value" = {
+                 vv <- as.character(as.numeric(input$valid_value)*100)
+                 tmp <- paste0(tmp,i,". Valid value : ", paste0(vv,"%"))},
+               "Use_imputation" = {
+                 tmp <- paste0(tmp,i,". Imputation : " , str_to_title(input$imputation))},
+               "Use_normalization" = {
+                 tmp <- paste0(tmp,i,". Normalization : ", str_to_title(input$normalization))},
+               NULL = {
+                 tmp <- tmp
+               }
+        )
+      }
+      
       info <- paste0(info,tmp,"\n")
       newTL <- data.frame(step="Preprocessing",
                           info=info,
@@ -232,7 +252,6 @@ shinyServer(function(input,output, session){
       
     }
   })
-  
   
   observeEvent(input$dea_btn, {
     withProgress(message = 'Plots calculations are in progress',
@@ -309,7 +328,6 @@ shinyServer(function(input,output, session){
     content = function(file) {
       if(!is.null(heatmap_input())){
         png(file)
-        print(heatmap_input())
         dev.off()
       }
     }
@@ -336,6 +354,133 @@ shinyServer(function(input,output, session){
       }
     }
   )
+  
+  observeEvent(input$gsa_btn,{
+    if(!is.null(dep())){
+      shinyalert("Start GSA!","Please wait for a while", type="success", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+      result_gsa()
+      result_gsa_GOBP()
+      gobp_plot()
+      result_gsa_GOCC()
+      gocc_plot()
+      result_gsa_GOMF()
+      gomf_plot()
+      result_gsa_Kegg()
+      kegg_plot()
+      reverted_kegg()
+    }else{
+      shinyalert("Ther is no DEP!", "Change threshold value or threshold type in DEA section", type="error", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+    }
+  })
+  
+  output$download_gobp <- downloadHandler(
+    filename = function() {paste0("GO_BP_result_", Sys.Date(), ".txt")},
+    content = function(file) {
+      if(!is.null(result_gsa_GOBP())){
+        write.table(result_gsa_GOBP(),file,row.names=F,quote=F,sep="\t")
+      }
+    }
+  )
+  
+  output$download_gocc <- downloadHandler(
+    filename = function() {paste0("GO_CC_result_", Sys.Date(), ".txt")},
+    content = function(file) {
+      if(!is.null(result_gsa_GOCC())){
+        write.table(result_gsa_GOCC(),file,row.names=F,quote=F,sep="\t")
+      }
+    }
+  )
+  
+  output$download_gomf <- downloadHandler(
+    filename = function() {paste0("GO_MF_result_", Sys.Date(), ".txt")},
+    content = function(file) {
+      if(!is.null(result_gsa_GOMF())){
+        write.table(result_gsa_GOMF(),file,row.names=F,quote=F,sep="\t")
+      }
+    }
+  )
+  
+  output$download_kegg <- downloadHandler(
+    filename = function() {paste0("Kegg_result_", Sys.Date(), ".txt")},
+    content = function(file) {
+      if(!is.null(result_gsa_Kegg())){
+        write.table(result_gsa_Kegg(),file,row.names=F,quote=F,sep="\t")
+      }
+    }
+  )
+  
+  
+  observeEvent(input$gsa_btn, {
+    kegg_info <- reverted_kegg()
+    pathway_choices <- kegg_info$Term
+    updateSelectInput(session, "pathID_selector",
+                      choices = pathway_choices, selected = "")
+  })
+  
+  
+  observeEvent(input$pathID_selector, {
+    # output$pathview_result <- pathway_graph()
+    if(input$pathID_selector!="") {
+      showModal(modalDialog(
+        title=input$pathID_selector,
+        size=c("l"),
+       renderImage({
+            outfile <- pathway_graph()
+
+            list(src=outfile, contentType="image/png+xml",
+                 width="100%", height="100%",
+                 alt="Pathview_graph")}, deleteFile=F),
+       footer=NULL,
+       easyClose=TRUE
+      ))
+      # output$pathview_result <- renderImage({
+      #   outfile <- pathway_graph()
+      #   
+      #   list(src=outfile, contentType="image/png+xml",
+      #        width="100%", height="100%",
+      #        alt="Pathview_graph")}, deleteFile=F)
+      
+    }
+    
+  })
+  
+  pathway_graph <- reactive({
+    kegg_info <- reverted_kegg()
+    rowdt <- rowData(dep())
+    pathway_name <- selected_pathway()
+    
+    fc <- rowdt$Total_B_vs_Total_M_diff
+    names(fc) <- rowdt$name
+    
+    pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
+    
+    outfile <- paste0("hsa", pathid,".pathview.png")
+    
+    
+    pathview(fc, pathway.id=pathid, gene.idtype="SYMBOL", species = "hsa",
+             kegg.dir="./PATHVIEW/")
+    
+    return(outfile)
+    
+  })
+  
+  
+  
+  output$download_pathview <- downloadHandler(
+    filename = function() {
+      paste0("Pathview_", selected_pathway(), ".png")},
+    content = function(file) {
+      file.copy(pathway_graph(), file)
+    },
+    contentType = "image/png"
+  )
+  
+  
+  
+    
+  
   
   ##--------------------------------------------------- reactive/EventReactive Section
   file_input <- reactive({NULL})
@@ -371,7 +516,6 @@ shinyServer(function(input,output, session){
   main_data <- reactive({NULL})
   main_data <- eventReactive(input$file_upload_btn, {
     temp_df <- file_input()
-    
     file_type <- input$file_type
     if(file_type=="TMT"){
       temp_df <- get_main_data_T(temp_df,input$TMT_input_option)
@@ -380,8 +524,8 @@ shinyServer(function(input,output, session){
       temp_df <- filter_with_option(checked_option, temp_df)
       temp_df <- get_main_data_LiB(temp_df, file_type)
     }
+    
   })
-  
   
   total_samples <- reactive({
     df <- main_data()
@@ -491,7 +635,6 @@ shinyServer(function(input,output, session){
       
       data <- assay(data_diff)
       df <- test(data,diff_colData,input$test_method,input$padj_method)
-      write.csv(data,"ttest_data.csv",quote = F)
       pval_pos <- grep("p.val",colnames(diff_rowData),fixed = T)
       padj_pos <- grep("_p.adj",colnames(diff_rowData),fixed = T)
       
@@ -559,7 +702,7 @@ shinyServer(function(input,output, session){
     if(type == "P.adj"){
       data_rejection <- add_rejections(res_test(), alpha=pvalue, lfc=log2fc)
       dep_rowData <- rowData(data_rejection)
-      dep_rowData$name <- as.factor(dep_rowData$name)
+      dep_rowData$name <- as.character(dep_rowData$name)
       data_rejection <- SummarizedExperiment(assays = list(assay(data_rejection)), rowData = dep_rowData, colData = colData(data_rejection))
     }
     else if(type == "P.value"){
@@ -609,19 +752,139 @@ shinyServer(function(input,output, session){
     data_results <- get_results(dep())
   })
   
-  output$volcano_info <- DT::renderDataTable({
+  selected_pathway <- reactive({
+    selected_pathway <- input$pathID_selector
+    return(selected_pathway)
+  })
+  
+  
+  
+  output$volcano_info <- DT::renderDataTable(DT::datatable({
     dep_rowData <- rowData(dep())
     pv_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
     lfc_pos <- grep("diff",colnames(dep_rowData),fixed = T)
     
-    input_vc <- data_frame(name=dep_rowData$name, lfc=dep_rowData[,lfc_pos], 
-                           p=-log10(as.numeric(dep_rowData[,pv_pos])), sig=dep_rowData$significant)
+    input_vc <- data_frame(name=dep_rowData$name, log2FC=dep_rowData[,lfc_pos], 
+                           `-log10P.val`=-log10(as.numeric(dep_rowData[,pv_pos])), sig=dep_rowData$significant)
     
     input_vc <- data.frame(input_vc)
     # input_vc <- input_vc %>% filter(input_vc, sig)
-    df <- brushedPoints(input_vc, input$volcano_brush, xvar="lfc", yvar = "p")
-    return(df)
-  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
+    df <- brushedPoints(input_vc, input$volcano_brush, xvar="log2FC", yvar = "X.log10P.val")
+    # return(df)
+  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15))) %>%  DT::formatRound(c(2:3),digits=2))
+  
+  
+  ########################### GSA ######################################
+  result_gsa <- reactive({
+    data <- rowData(dep())
+    res_gsa <- gsa(data,input$gsa_set,input$gsa_tool)
+    return(res_gsa)
+  })
+  
+  result_gsa_GOBP <- reactive({
+    res_gsa <- result_gsa()
+    if(!is.null(res_gsa)){
+      if(input$gsa_tool == "enrichR"){
+        gobp<-res_gsa[["GO_Biological_Process_2018"]]
+      }
+    }
+    return(gobp)
+  })
+  
+  gobp_plot <- reactive({
+    gobp <- result_gsa_GOBP()
+    gobp$P.value2 <- -log10(gobp$P.value)
+    gobp <- gobp[order(-gobp$P.value2),]
+    gobp <- gobp[c(1:input$set_nterm),]
+    output$gobp_plot <- renderPlot({
+      ggplot(data=gobp, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
+        geom_bar(stat = "identity",fill="#3c8dbc")+
+        labs(title="GO_BP",x=expression(-log10(P.value)),y="")+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
+    })
+  })
+  
+  result_gsa_GOCC <- reactive({
+    res_gsa <- result_gsa()
+    if(!is.null(res_gsa)){
+      if(input$gsa_tool == "enrichR"){
+        gocc<-res_gsa[["GO_Cellular_Component_2018"]]
+      }
+    }
+    return(gocc)
+  })
+  
+  gocc_plot <- reactive({
+    gocc <- result_gsa_GOCC()
+    gocc$P.value2 <- -log10(gocc$P.value)
+    gocc <- gocc[order(-gocc$P.value2),]
+    gocc <- gocc[c(1:input$set_nterm),]
+    output$gocc_plot <- renderPlot({
+      ggplot(data=gocc, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
+        geom_bar(stat = "identity",fill="#3c8dbc")+
+        labs(title="GO_CC",x=expression(-log10(P.value)),y="")+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
+    })
+  })
+  
+  result_gsa_GOMF <- reactive({
+    res_gsa <- result_gsa()
+    if(!is.null(res_gsa)){
+      if(input$gsa_tool == "enrichR"){
+        gomf<-res_gsa[["GO_Molecular_Function_2018"]]
+      }
+    }
+    return(gomf)
+  })
+  
+  gomf_plot <- reactive({
+    gomf <- result_gsa_GOMF()
+    gomf$P.value2 <- -log10(gomf$P.value)
+    gomf <- gomf[order(-gomf$P.value2),]
+    gomf <- gomf[c(1:input$set_nterm),]
+    output$gomf_plot <- renderPlot({
+      ggplot(data=gomf, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
+        geom_bar(stat = "identity",fill="#3c8dbc")+
+        labs(title="GO_MF",x=expression(-log10(P.value)),y="")+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
+    })
+  })
+  
+  result_gsa_Kegg <- reactive({
+    res_gsa <- result_gsa()
+    if(!is.null(res_gsa)){
+      if(input$gsa_tool == "enrichR"){
+        kegg<-res_gsa[["KEGG_2019_Human"]]
+      }
+    }
+    return(kegg)
+  })
+  
+  reverted_kegg <- reactive({
+    kegg <- result_gsa_Kegg()
+    kegg <- changePathwayID(kegg)
+    return(kegg)
+  })
+  
+  
+  kegg_plot <- reactive({
+    kegg <- result_gsa_Kegg()
+    kegg$P.value2 <- -log10(kegg$P.value)
+    kegg <- kegg[order(-kegg$P.value2),]
+    kegg <- kegg[c(1:input$set_nterm),]
+    output$kegg_plot <- renderPlot({
+      ggplot(data=kegg, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
+        geom_bar(stat = "identity",fill="#3c8dbc")+
+        labs(title="KEGG",x=expression(-log10(P.value)),y="")+
+        theme_bw()+
+        theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
+    })
+  })
+  
+
   
   
   addTimeLine <-  function(timeLine){
