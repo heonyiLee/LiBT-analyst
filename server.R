@@ -250,11 +250,11 @@ shinyServer(function(input,output, session){
                           time=as.character(Sys.time()),color="green",icon="chart-bar")
       timeLine <<- rbind(timeLine,newTL)
       addTimeLine(timeLine)
-      
     }
   })
   
   observeEvent(input$dea_btn, {
+    print(dep())
     withProgress(message = 'Plots calculations are in progress',
                  detail = 'Please wait for a while', value = 0, {
                    for (i in 1:10) {
@@ -436,7 +436,8 @@ shinyServer(function(input,output, session){
   
   observeEvent(input$gsea_btn, {
     if(!is.null(dep())){
-      
+      condition <- make_condition(case_samples(),control_samples())
+      group_name <- unique(condition)
       
     } else{
       shinyalert("Ther is no Data!", "Chack your data again", type="error", timer = 10000,
