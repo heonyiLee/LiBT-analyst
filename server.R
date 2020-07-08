@@ -430,7 +430,6 @@ shinyServer(function(input,output, session){
             outfile <- pathway_graph()
 
             list(src=outfile, contentType="image/png+xml",
-                 width="100%", height="100%",
                  alt="Pathview_graph")}, deleteFile=F),
        footer=NULL,
        easyClose=TRUE
