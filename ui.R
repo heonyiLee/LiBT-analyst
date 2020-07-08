@@ -57,6 +57,7 @@ ui <- function(request) {shinyUI(
                                id = "pca_plot_box",
                                solidHeader = T,
                                width = 6,
+                               prettySwitch(inputId = "show_sampleID", label = "Show SampleID", value = F, width=2, status = "success", inline=T),
                                plotOutput("pca_plot"),
                                downloadButton("download_pca", "Save_png")
                              ),
@@ -64,8 +65,10 @@ ui <- function(request) {shinyUI(
                                id = "correlation_matrix_box",
                                solidHeader = T,
                                width = 6,
+                               br(),br(),
                                plotOutput("correlation_matrix"),
-                               downloadButton("download_correlation", "Save_png")
+                               downloadButton("download_correlation", "Save_png"),
+                               
                              ),
                              box(
                                id = "volcano_box",
@@ -79,8 +82,9 @@ ui <- function(request) {shinyUI(
                                id = "heatmap_box",
                                solidHeader = T,
                                width = 6,
-                               plotOutput("heatmap"),
-                               downloadButton("download_heatmap", "Save_png")
+                               plotOutput("heatmap", brush = "heatmap_brush"),
+                               downloadButton("download_heatmap", "Save_png"),
+                               downloadButton("download_gene_cluster","Save_Gene_cluster_info")
                              )
                              ,useShinyalert()
                            )
@@ -91,33 +95,42 @@ ui <- function(request) {shinyUI(
                                id = "gobp_box",
                                solidHeader = T,
                                width = 6,
-                               plotOutput("gobp_plot"),
-                               downloadButton("download_gobp", "Save_GOBP")
+                               withSpinner(plotOutput("gobp_plot")),
+                               downloadButton("download_gobp", "Save_GOBP_All")
                              ),
                              box(
                                id = "gocc_box",
                                solidHeader = T,
                                width = 6,
-                               plotOutput("gocc_plot"),
-                               downloadButton("download_gocc", "Save_GOCC")
+                               withSpinner(plotOutput("gocc_plot")),
+                               downloadButton("download_gocc", "Save_GOCC_All")
                              ),
                              box(
                                id = "gomf_box",
                                solidHeader = T,
                                width = 6,
-                               plotOutput("gomf_plot"),
-                               downloadButton("download_gomf", "Save_GOMF")
+                               withSpinner(plotOutput("gomf_plot")),
+                               downloadButton("download_gomf", "Save_GOMF_All")
                              ),
                              box(
                                id = "kegg_box",
                                solidHeader = T,
                                width = 6,
-                               plotOutput("kegg_plot"),
-                               downloadButton("download_kegg", "Save_Kegg")
+                               withSpinner(plotOutput("kegg_plot")),
+                               downloadButton("download_kegg", "Save_Kegg_All")
                              )
                              ,useShinyalert()
                   )#tab2 end
-              )
+              ),#End of GSA tab
+              tabPanel("Result of GSEA",
+                       fluidRow(
+                         box(
+                           id = "gsea",
+                           solidHeader = T,
+                           width = 12
+                         )
+                       )
+              )#End of GSEA tab
             )#End of tabBox
           )#End of fluidRow
         ),#End of tabItem_analysis
@@ -248,7 +261,7 @@ ui <- function(request) {shinyUI(
             uiOutput("dea_case"),
             uiOutput("dea_control"),
             radioButtons("test_method", label="Choose test method", 
-                         choices = list("T.Test" = "T.Test", "Wilcoxon-Ranksum" = "Wilcoxon-Ranksum", "edgeR" = "edgeR", "Limma" = "Limma")),
+                         choices = list("T.Test" = "T.Test", "Wilcoxon-Ranksum" = "Wilcoxon-Ranksum", "edgeR" = "edgeR")),
             radioButtons("padj_method", label="Choose p.adj method", 
                          choices = list("Benjamini-Hocherg" = "BH", "Bonferroni" = "bonferroni")),
             actionButton("test_btn", "Start DEA")
@@ -306,8 +319,6 @@ ui <- function(request) {shinyUI(
           boxToolSize = "md",
           closable = F,
           footer = fluidRow(
-            radioButtons("gsea_set", label="Choose Data set", 
-                         choices = list("Case-UP" = "caseup", "Ctrl-UP" = "casedown")),
             actionButton("gsea_btn", "Start GSEA")
           )
         ) # End of DEP box

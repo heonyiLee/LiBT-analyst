@@ -1,9 +1,30 @@
  $(document).ready(function(){
 
-   $(".load-container").hide();
+   $("#data_table .load-container").hide();
    $("#file_upload_btn").click(function(){
-     $(".load-container").show();
+     $("#data_table .load-container").show();
    });
+   
+   $("#gobp_box .load-container").hide();
+   $("#gsa_btn").click(function(){
+     $("#gobp_box .load-container").show();
+   });
+   
+    $("#gocc_box .load-container").hide();
+   $("#gsa_btn").click(function(){
+     $("#gocc_box .load-container").show();
+   });
+   
+    $("#gomf_box .load-container").hide();
+   $("#gsa_btn").click(function(){
+     $("#gomf_box .load-container").show();
+   });
+   
+    $("#kegg_box .load-container").hide();
+   $("#gsa_btn").click(function(){
+     $("#kegg_box .load-container").show();
+   });
+   
 
    content_width = $(".content").css('width');
    rightbar_width = $("#controlbar aside").css('width');

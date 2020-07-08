@@ -7,6 +7,8 @@ library(SummarizedExperiment)
 library(ggplot2)
 library(edgeR)
 library(enrichR)
+library(tibble)
+library(phenoTest)
 
 source("function.R")
 # 2019.12.30
@@ -283,7 +285,7 @@ shinyServer(function(input,output, session){
         volcano_input()
       })
       output$pca_plot <- renderPlot({
-        pca_input()
+        pca_input_noSample()
       })
     }
     
@@ -311,6 +313,18 @@ shinyServer(function(input,output, session){
     data_results()
   })
   
+  observeEvent(input$show_sampleID ,{
+    if(input$show_sampleID){
+      output$pca_plot <- renderPlot({
+        pca_input_Sample()
+      })
+    } else {
+      output$pca_plot <- renderPlot({
+        pca_input_noSample()
+      })
+    }
+  })
+  
   output$download_pca <- downloadHandler(
     filename = function() {paste0("PCA_plot_", Sys.Date(), ".png")},
     content = function(file) {
@@ -332,6 +346,17 @@ shinyServer(function(input,output, session){
     }
   )
   
+  output$download_gene_cluster <- downloadHandler(
+    filename = function() {paste0("Heatmap_gene_cluster_info_",Sys.Date(),".csv")},
+    content = function(file){
+      filtered = subset(rowData(dep()), cut = significant == T)
+      if(!is.null(filtered)){
+        res <- get_gene_cluster(assay(dep()), rowData(dep()), input$dea_clusterNum)
+        write.csv(res,file,row.names = F, quote = F)
+      } 
+    }
+  )
+  
   output$download_correlation <- downloadHandler(
     filename = function() {paste0("Correlation_plot_", Sys.Date(), ".png")},
     content = function(file) {
@@ -345,7 +370,7 @@ shinyServer(function(input,output, session){
   
   output$download_volcano <- downloadHandler(
     filename = function() {paste0("Volcano_plot_", Sys.Date(), ".png")},
-    content = function(file) {
+    content = function(file) {s
       if(!is.null(volcano_input())){
         png(file)
         print(volcano_input())
@@ -368,46 +393,58 @@ shinyServer(function(input,output, session){
       result_gsa_Kegg()
       kegg_plot()
     }else{
-      shinyalert("Ther is no DEP!", "Change threshold value or threshold type in DEA section", type="error", timer = 10000,
+      shinyalert("Ther is no DEP!", "Change threshold value or threshold type", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
     }
   })
   
   output$download_gobp <- downloadHandler(
-    filename = function() {paste0("GO_BP_result_", Sys.Date(), ".txt")},
+    filename = function() {paste0("GO_BP_result_", Sys.Date(), ".csv")},
     content = function(file) {
       if(!is.null(result_gsa_GOBP())){
-        write.table(result_gsa_GOBP(),file,row.names=F,quote=F,sep="\t")
+        write.csv(result_gsa_GOBP(),file,row.names=F,quote=F)
       }
     }
   )
   
   output$download_gocc <- downloadHandler(
-    filename = function() {paste0("GO_CC_result_", Sys.Date(), ".txt")},
+    filename = function() {paste0("GO_CC_result_", Sys.Date(), ".csv")},
     content = function(file) {
       if(!is.null(result_gsa_GOCC())){
-        write.table(result_gsa_GOCC(),file,row.names=F,quote=F,sep="\t")
+        write.csv(result_gsa_GOCC(),file,row.names=F,quote=F)
       }
     }
   )
   
   output$download_gomf <- downloadHandler(
-    filename = function() {paste0("GO_MF_result_", Sys.Date(), ".txt")},
+    filename = function() {paste0("GO_MF_result_", Sys.Date(), ".csv")},
     content = function(file) {
       if(!is.null(result_gsa_GOMF())){
-        write.table(result_gsa_GOMF(),file,row.names=F,quote=F,sep="\t")
+        write.csv(result_gsa_GOMF(),file,row.names=F,quote=F)
       }
     }
   )
   
   output$download_kegg <- downloadHandler(
-    filename = function() {paste0("Kegg_result_", Sys.Date(), ".txt")},
+    filename = function() {paste0("Kegg_result_", Sys.Date(), ".csv")},
     content = function(file) {
       if(!is.null(result_gsa_Kegg())){
-        write.table(result_gsa_Kegg(),file,row.names=F,quote=F,sep="\t")
+        write.csv(result_gsa_Kegg(),file,row.names=F,quote=F)
       }
     }
   )
+  
+  observeEvent(input$gsea_btn, {
+    if(!is.null(dep())){
+      
+      
+    } else{
+      shinyalert("Ther is no Data!", "Chack your data again", type="error", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+    }
+  })
+  
+  
   
   ##--------------------------------------------------- reactive/EventReactive Section
   file_input <- reactive({NULL})
@@ -645,13 +682,14 @@ shinyServer(function(input,output, session){
     } 
     return(data_rejection)
   })
+
   
   volcano_input <- reactive({
     condition <- dep()$condition
     case_name <- condition[1]
     ctrl_name <- condition[length(condition)]
     contrast <- paste0(case_name,"_vs_", ctrl_name)
-    
+
     dep_rowData <- rowData(dep())
     pv_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
     lfc_pos <- grep("diff",colnames(dep_rowData),fixed = T)
@@ -659,11 +697,22 @@ shinyServer(function(input,output, session){
     input_vc <- data_frame(name=dep_rowData$name, lfc=dep_rowData[,lfc_pos], 
                            p=-log10(as.numeric(dep_rowData[,pv_pos])), sig=dep_rowData$significant)
     plot_volcano(dep(), contrast=contrast, label_size=2, add_names=F) + 
-      geom_point(data = filter(input_vc,sig), aes(lfc, p), color = "red", size= 2)
+      geom_point(data = filter(input_vc,sig), aes(lfc, p), color = "red", size= 2)+
+      labs(x=expression(paste(log[2],FoldChange)),y=expression(paste(-log[10],P.value)))
   })
   
-  pca_input <- reactive({
-    plot_pca(dep(), x=1, y=2, n=500, point_size=3, indicate = c("condition"))
+  pca_input_noSample <- reactive({
+    n = nrow(assay(dep()))
+    plot_pca(dep(), x=1, y=2, n=n, point_size=3, indicate = c("condition"))+
+      ggtitle(paste("PCA plot -", n, "variable proteins", sep=" "))
+  })
+  
+  pca_input_Sample <- reactive({
+    n = nrow(assay(dep()))
+    pca_df <- get_pca_df(assay(dep()), colData(dep()), n)
+    plot_pca(dep(), x=1, y=2, n=n, point_size=3, indicate = c("condition"))+
+      ggtitle(paste("PCA plot -", n, "variable proteins", sep=" "))+
+      geom_text(data=pca_df,aes(label=rowname),nudge_y = 1.5)
   })
   
   correlation_input <- reactive({
@@ -671,8 +720,9 @@ shinyServer(function(input,output, session){
   })
   
   heatmap_input <- reactive({
-    plot_heatmap(dep(), type="centered", kmeans=T, k=input$dea_clusterNum, 
+    plot_heatmap(dep(), type="centered", kmeans=T, k=input$dea_clusterNum,
                  col_limit=2, show_row_names=F, indicate=c("condition"))
+    
   })
   
   data_results <- reactive({
@@ -684,14 +734,15 @@ shinyServer(function(input,output, session){
     pv_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
     lfc_pos <- grep("diff",colnames(dep_rowData),fixed = T)
     
-    input_vc <- data_frame(name=dep_rowData$name, log2FC=dep_rowData[,lfc_pos], 
+    input_vc <- data.frame(name=dep_rowData$name, log2FC=dep_rowData[,lfc_pos], 
                            `-log10P.val`=-log10(as.numeric(dep_rowData[,pv_pos])), sig=dep_rowData$significant)
     
     input_vc <- data.frame(input_vc)
+    colnames(input_vc) <- c("name", "log<sub>2</sub>FC", "-log<sub>10</sub>P.value", "sig")
     # input_vc <- input_vc %>% filter(input_vc, sig)
-    df <- brushedPoints(input_vc, input$volcano_brush, xvar="log2FC", yvar = "X.log10P.val")
+    df <- brushedPoints(input_vc, input$volcano_brush, xvar="log<sub>2</sub>FC", yvar = "-log<sub>10</sub>P.value")
     # return(df)
-  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15))) %>%  DT::formatRound(c(2:3),digits=2))
+  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)), escape = F) %>%  DT::formatRound(c(2:3),digits=2))
   
   
   ########################### GSA ######################################
@@ -719,7 +770,7 @@ shinyServer(function(input,output, session){
     output$gobp_plot <- renderPlot({
       ggplot(data=gobp, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
         geom_bar(stat = "identity",fill="#3c8dbc")+
-        labs(title="GO_BP",x=expression(-log10(P.value)),y="")+
+        labs(title="GO_BP",x=expression(paste(-log[10],P.value)),y="")+
         theme_bw()+
         theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
     })
@@ -743,7 +794,7 @@ shinyServer(function(input,output, session){
     output$gocc_plot <- renderPlot({
       ggplot(data=gocc, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
         geom_bar(stat = "identity",fill="#3c8dbc")+
-        labs(title="GO_CC",x=expression(-log10(P.value)),y="")+
+        labs(title="GO_CC",x=expression(paste(-log[10],P.value)),y="")+
         theme_bw()+
         theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
     })
@@ -767,7 +818,7 @@ shinyServer(function(input,output, session){
     output$gomf_plot <- renderPlot({
       ggplot(data=gomf, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
         geom_bar(stat = "identity",fill="#3c8dbc")+
-        labs(title="GO_MF",x=expression(-log10(P.value)),y="")+
+        labs(title="GO_MF",x=expression(paste(-log[10],P.value)),y="")+
         theme_bw()+
         theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
     })
@@ -791,7 +842,7 @@ shinyServer(function(input,output, session){
     output$kegg_plot <- renderPlot({
       ggplot(data=kegg, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
         geom_bar(stat = "identity",fill="#3c8dbc")+
-        labs(title="KEGG",x=expression(-log10(P.value)),y="")+
+        labs(title="KEGG",x=expression(paste(-log[10],P.value)),y="")+
         theme_bw()+
         theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
     })
