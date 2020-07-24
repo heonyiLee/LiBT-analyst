@@ -1,1 +1,5 @@
 #pca_plot_box .form-group .shiny-input-container {margin-left:500px;}
+.modal-dialog {
+  width: fit-content !important;
+  height: fit-content !important;
+}

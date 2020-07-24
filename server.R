@@ -9,6 +9,7 @@ library(edgeR)
 library(enrichR)
 library(tibble)
 library(phenoTest)
+library(pathview)
 
 source("function.R")
 # 2019.12.30
@@ -193,7 +194,7 @@ shinyServer(function(input,output, session){
                }
         )
       }
-
+      
       info <- paste0(info,tmp,"\n")
       newTL <- data.frame(step="Preprocessing",
                           info=info,
@@ -381,7 +382,7 @@ shinyServer(function(input,output, session){
   
   observeEvent(input$gsa_btn,{
     if(!is.null(dep())){
-     shinyalert("Start GSA!","Please wait for a while", type="success", timer = 10000,
+      shinyalert("Start GSA!","Please wait for a while", type="success", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
       result_gsa()
       result_gsa_GOBP()
@@ -392,6 +393,7 @@ shinyServer(function(input,output, session){
       gomf_plot()
       result_gsa_Kegg()
       kegg_plot()
+      reverted_kegg()
     }else{
       shinyalert("Ther is no DEP!", "Change threshold value or threshold type", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
@@ -445,6 +447,69 @@ shinyServer(function(input,output, session){
     }
   })
   
+  observeEvent(input$gsa_btn, {
+    kegg_info <- reverted_kegg()
+    pathway_choices <- kegg_info$Term
+    updateSelectInput(session, "pathID_selector",
+                      choices = pathway_choices, selected = "")
+  })
+  
+  
+  observeEvent(input$pathID_selector, {
+    # output$pathview_result <- pathway_graph()
+    if(input$pathID_selector!="") {
+      showModal(modalDialog(
+        title=input$pathID_selector,
+        size=c("l"),
+       renderImage({
+            outfile <- pathway_graph()
+
+            list(src=outfile, contentType="image/png+xml",
+                 width="100%", height="100%",
+                 alt="Pathview_graph")}, deleteFile=F),
+       footer=NULL,
+       easyClose=TRUE
+      ))
+      # output$pathview_result <- renderImage({
+      #   outfile <- pathway_graph()
+      #   
+      #   list(src=outfile, contentType="image/png+xml",
+      #        width="100%", height="100%",
+      #        alt="Pathview_graph")}, deleteFile=F)
+      
+    }
+    
+  })
+  
+  pathway_graph <- reactive({
+    kegg_info <- reverted_kegg()
+    rowdt <- rowData(dep())
+    pathway_name <- selected_pathway()
+    
+    fc <- rowdt$Total_B_vs_Total_M_diff
+    names(fc) <- rowdt$name
+    
+    pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
+    
+    outfile <- paste0("hsa", pathid,".pathview.png")
+    
+    
+    pathview(fc, pathway.id=pathid, gene.idtype="SYMBOL", species = "hsa",
+             kegg.dir="./PATHVIEW/")
+    
+    return(outfile)
+    
+
+  })
+
+  output$download_pathview <- downloadHandler(
+    filename = function() {
+      paste0("Pathview_", selected_pathway(), ".png")},
+    content = function(file) {
+      file.copy(pathway_graph(), file)
+    },
+    contentType = "image/png"
+  )
   
   
   ##--------------------------------------------------- reactive/EventReactive Section
@@ -730,6 +795,12 @@ shinyServer(function(input,output, session){
     data_results <- get_results(dep())
   })
   
+  selected_pathway <- reactive({
+    selected_pathway <- input$pathID_selector
+    return(selected_pathway)
+  })
+  
+  
   output$volcano_info <- DT::renderDataTable(DT::datatable({
     dep_rowData <- rowData(dep())
     pv_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
@@ -834,6 +905,13 @@ shinyServer(function(input,output, session){
     }
     return(kegg)
   })
+  
+  reverted_kegg <- reactive({
+    kegg <- result_gsa_Kegg()
+    kegg <- changePathwayID(kegg)
+    return(kegg)
+  })
+  
   
   kegg_plot <- reactive({
     kegg <- result_gsa_Kegg()

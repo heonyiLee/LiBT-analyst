@@ -128,7 +128,7 @@ get_main_data_LiB <- function(data, file_type) {
   }
   
   main_data <- data[,main_pos]
-
+  
   unique_pos <- grep("Unique.peptides",cn_data)
   Unique_peptides <- data[,unique_pos]
   Sequence_coverage <- data$Sequence.coverage....
@@ -192,7 +192,7 @@ get_main_data_T <- function(data,normalization) {
   }
   
   main_data <- na.omit(main_data)
-
+  
   acc <- main_data$Accession
   id_pos <- grep("-",acc)
   acc_id <- acc[id_pos]
@@ -438,7 +438,7 @@ use_imputation_option <- function(data, case, control, option) {
          "zero" =
            {data_imp <- impute(data, fun="zero")}
   )
-
+  
   return(data_imp)
 }
 
@@ -576,3 +576,35 @@ enrichR <- function(genes){
 gsea <- function(rowData){
  
 }
+
+changePathwayID <- function(kegg) {
+  lines <- readLines(
+    "http://www.kegg.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext" )
+  pathways <- do.call(
+    rbind,
+    str_split( grep( "^[ABCD]\\s+\\d{5}\\s+.*?$", lines, value=TRUE ), "\\s{2,}" )
+  )
+  pathways <- as.data.frame( pathways )[-1]
+  colnames( pathways )  <- c( "kegg_id", "Term" )
+  
+  kegg_info <- merge(pathways, kegg, by="Term")
+  
+  return(kegg_info)
+  
+}
+
+# library(org.Hs.eg.db)
+# mapped <- mappedkeys(org.Hs.egPATH2EG)
+# L <- as.list(org.Hs.egPATH2EG[mapped])
+# Kegg_ID <- names(L)
+
+
+# see_pathview <- function(..., save_image = FALSE)
+# {
+#   msg <- capture.output(pathview::pathview(...), type = "message")
+#   msg <- grep("image file", msg, value = T)
+#   filename <- sapply(strsplit(msg, " "), function(x) x[length(x)])
+#   img <- png::readPNG(filename)
+#   grid::grid.raster(img)
+#   if(!save_image) invisible(file.remove(filename))
+# }
