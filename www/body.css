@@ -3,3 +3,10 @@
   width: fit-content !important;
   height: fit-content !important;
 }
+
+.download_exp_btn {margin-left:15px; margin-bottom:15px; background-color:#14d1ff; color:white;}
+.download_exp_btn:hover {background-color:#13c6f2; color:white;}
+.download_dep_info_btn {margin-bottom:15px; background-color:#00c369; color:white;}
+.download_dep_info_btn:hover {background-color:#01b563; color:white;}
+
+#ppi_image >div >img {width:100%;}

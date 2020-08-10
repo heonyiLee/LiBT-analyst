@@ -510,6 +510,25 @@ change_Sig <- function(data_rejection,pvalue,log2fc){
   return(dep_rowData)
 }
 
+get_optimize_k <- function(assay, sig_gene){
+  data <- as.data.frame(assay)
+  gene <- rownames(data)
+  data <- cbind(gene,data)
+  
+  sig_gene <- data.frame(gene=sig_gene)
+  
+  data <- merge(sig_gene,data,by="gene")
+  rownames(data) <- data$gene
+  data <- data[,-1]
+  
+  nc <- NbClust(data, min.nc = 2, max.nc = 5, method="kmeans")
+  nc_res <- table(nc$Best.n[1,])
+  nc_res <- as.data.frame(nc_res)
+  nc_res <- nc_res[order(nc_res$Freq,decreasing = T),]
+  best.c <- as.numeric(as.character(nc_res$Var1[1]))
+  return(best.c)
+}
+
 get_gene_cluster <- function(assay, rowData, k){
   assay <- as.data.frame(assay)
   rowData <- as.data.frame(rowData)
@@ -550,7 +569,10 @@ get_pca_df <- function(assay, colData, n){
   return(pca_df)
 }
 
-gsa <- function(data,set,tool){
+#,tool
+gsa <- function(data,set){
+  data <- as.data.frame(data)
+  data <- data[data$significant == T,]
   data <- data[,c(1,7)]
   colnames(data) <- c("genes","log2fc")
   if(set == "caseup"){
@@ -559,12 +581,14 @@ gsa <- function(data,set,tool){
     genes <- data$genes[data$log2fc < 0]
   }
   
-  if(tool == "enrichR"){
-    res_gsa <- enrichR(genes)
-    return(res_gsa)
-  } else{
-    
-  }
+  res_gsa <- enrichR(genes)
+  return(res_gsa)
+  # 
+  # if(tool == "enrichR"){
+  #   
+  # } else{
+  #   
+  # }
 }
 
 enrichR <- function(genes){
@@ -573,8 +597,80 @@ enrichR <- function(genes){
   return(res_er)
 }
 
-gsea <- function(rowData){
- 
+gsea <- function(rowData, stats){
+  print("Start GSEA")
+  set.seed(1234)
+  rowData <- as.data.frame(rowData)
+  
+  fc <- rowData[,grep("diff",colnames(rowData))]
+  padj <- rowData[,grep("p.adj",colnames(rowData))]
+  pval <- rowData[,grep("p.val",colnames(rowData))]
+  if(stats == "P.adj"){
+    gene_list <- as.numeric(padj)
+  }else if(stats == "P.value"){
+    gene_list <- as.numeric(pval)
+  }else if(stats == "log2fc"){
+    gene_list <- as.numeric(fc)
+  }else{
+    gene_list <- as.numeric(fc*-log(padj,10))  
+  }
+  
+  gene <- as.character(rowData$name)
+  names(gene_list) <- gene
+  gene_list <- sort(gene_list, decreasing = T)
+  
+  dir <- "./base/"
+  cate <- c("Kegg","GO_BP", "GO_CC","GO_MF")
+  gmts <- c("c2.cp.kegg.v7.1.symbols.gmt","c5.bp.v7.1.symbols.gmt", "c5.cc.v7.1.symbols.gmt", "c5.mf.v7.1.symbols.gmt")
+  
+  for(i in 1:4){
+    myGO = gmtPathways(paste0(dir,gmts[i]))
+    
+    fgRes <- fgsea(pathways = myGO, stats = gene_list, minSize=2, nperm=10000) %>% as.data.frame() #%>% dplyr::filter(padj < 0.05)
+    
+    ## Filter FGSEA by using gage results. Must be significant and in same direction to keep 
+    gaRes = gage(gene_list, gsets=myGO, same.dir=TRUE, set.size =c(2,Inf))
+    
+    ups = as.data.frame(gaRes$greater) %>% 
+      tibble::rownames_to_column("Pathway") %>% 
+      dplyr::filter(!is.na(p.geomean))%>% #& q.val < 0.05
+      dplyr::select("Pathway")
+    
+    downs = as.data.frame(gaRes$less) %>% 
+      tibble::rownames_to_column("Pathway") %>% 
+      dplyr::filter(!is.na(p.geomean)) %>% #& q.val < 0.05
+      dplyr::select("Pathway")
+    
+    #print(dim(rbind(ups,downs)))
+    keepups = fgRes[fgRes$NES > 0 & !is.na(match(fgRes$pathway, ups$Pathway)), ]
+    keepdowns = fgRes[fgRes$NES < 0 & !is.na(match(fgRes$pathway, downs$Pathway)), ]
+    
+    ### Collapse redundant pathways
+    Up = fgsea::collapsePathways(keepups, pathways = myGO, stats = gene_list,  nperm = 500, pval.threshold = 0.05)
+    Down = fgsea::collapsePathways(keepdowns, myGO, gene_list,  nperm = 500, pval.threshold = 0.05) 
+    
+    fgRes = fgRes[ !is.na(match(fgRes$pathway, c( Up$mainPathways, Down$mainPathways))), ] %>% arrange(desc(NES))
+    fgRes$Enrichment = ifelse(fgRes$NES > 0, "Up-regulated", "Down-regulated")
+    filtRes = rbind(head(fgRes, n = 10),tail(fgRes, n = 10 ))
+    
+    g = ggplot(filtRes, aes(reorder(pathway, NES), NES)) +
+      geom_segment(aes(reorder(pathway, NES), xend=pathway, y=0, yend=NES)) +
+      geom_point(size=5, aes( fill = Enrichment), shape=21, stroke=2) +
+      scale_fill_manual(values = c("Down-regulated" = "dodgerblue", "Up-regulated" = "firebrick") ) +
+      coord_flip() + 
+      labs(x="Pathway", y="Normalized Enrichment Score", title=paste0("GSEA - ",cate[i])) +
+      theme(text = element_text(size="15"))+
+      theme_minimal()
+    
+    assign(paste0("result_",cate[i]), fgRes)
+    assign(paste0("plot_",cate[i]), g)
+    
+  }
+  
+  output = list("result_GO_BP" = result_GO_BP, "result_GO_CC" = result_GO_CC, "result_GO_MF" = result_GO_MF, "result_Kegg" = result_Kegg,
+                "plot_GO_BP" = plot_GO_BP, "plot_GO_CC" = plot_GO_CC, "plot_GO_MF" = plot_GO_MF, "plot_Kegg" = plot_Kegg)
+  
+  return(output)
 }
 
 changePathwayID <- function(kegg) {
@@ -591,6 +687,65 @@ changePathwayID <- function(kegg) {
   
   return(kegg_info)
   
+}
+
+string_url_builder <- function(organism, gene){
+  if(organism == "Homo Sapiens"){
+    input_organism  <-  '9606'
+  } else{
+    input_organism <-  '10090'
+  }
+  if(length(gene)==1){
+    address  <-  "network?identifier="
+  } else{
+    address  <-  "network?identifiers="
+    gene <- paste(gene,collapse = "%0d")
+  }
+  URL <- paste0("http://string-db.org/api/image/",
+                address,
+                gene,
+                "&species=",input_organism,
+                "&network_flavor=confidence&hide_disconnected_nodes=1")
+  return(URL)
+}
+
+string_image_download_url_builder <- function(organism, gene){
+  if(organism == "Homo Sapiens"){
+    input_organism  <-  '9606'
+  } else{
+    input_organism <-  '10090'
+  }
+  if(length(gene)==1){
+    address  <-  "network?identifier="
+  } else{
+    address  <-  "network?identifiers="
+    gene <- paste(gene,collapse = "%0d")
+  }
+  URL <- paste0("http://string-db.org/api/highres_image/",
+                address,
+                gene,
+                "&species=",input_organism,
+                "&network_flavor=confidence&hide_disconnected_nodes=1")
+  return(URL)
+}
+
+string_tsv_download_url_builder <- function(organism, gene){
+  if(organism == "Homo Sapiens"){
+    input_organism  <-  '9606'
+  } else{
+    input_organism <-  '10090'
+  }
+  if(length(gene)==1){
+    address  <-  "network?identifier="
+  } else{
+    address  <-  "network?identifiers="
+    gene <- paste(gene,collapse = "%0d")
+  }
+  URL <- paste0("http://string-db.org/api/tsv/",
+                address,
+                gene,
+                "&species=",input_organism)
+  return(URL)
 }
 
 # library(org.Hs.eg.db)
