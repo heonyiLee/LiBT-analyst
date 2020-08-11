@@ -408,6 +408,7 @@ use_valid_option <- function(data, case, control, option) {
 
 use_normalization_option <- function(data, option) {
   if(option=="Yes") {
+    print(option)
     data_norm <- normalize_vsn(data)
   }
   # } 
@@ -521,12 +522,25 @@ get_optimize_k <- function(assay, sig_gene){
   rownames(data) <- data$gene
   data <- data[,-1]
   
-  nc <- NbClust(data, min.nc = 2, max.nc = 5, method="kmeans")
-  nc_res <- table(nc$Best.n[1,])
-  nc_res <- as.data.frame(nc_res)
-  nc_res <- nc_res[order(nc_res$Freq,decreasing = T),]
-  best.c <- as.numeric(as.character(nc_res$Var1[1]))
-  return(best.c)
+  max_col = ncol(data)-1
+  data <- t(data)
+  fiz <- fviz_nbclust(data, kmeans,method="gap_stat", diss=dist(data,method="euclidean"), k.max=max_col)
+  #fiz <- fviz_nbclust(data, kmeans,method="wss", diss=dist(data,method="euclidean"), k.max=max_k)
+  gap <- fiz[["data"]][["gap"]]
+  best_k <- c()
+  for(i in 2 : (length(gap)-1)){
+    first <- gap[i-1]
+    second <- gap[i]
+    third <- gap[i+1]
+    if(second > first & second > third){
+      best_k <- as.numeric(i)
+      break
+    }else{
+      i <- i+1
+    }
+  }
+
+  return(best_k)
 }
 
 get_gene_cluster <- function(assay, rowData, k){
@@ -570,9 +584,11 @@ get_pca_df <- function(assay, colData, n){
 }
 
 #,tool
-gsa <- function(data,set){
+gsa <- function(data,input, set){
   data <- as.data.frame(data)
-  data <- data[data$significant == T,]
+  if(input == "dep"){
+    data <- data[data$significant == T,]
+  }
   data <- data[,c(1,7)]
   colnames(data) <- c("genes","log2fc")
   if(set == "caseup"){
@@ -673,7 +689,7 @@ gsea <- function(rowData, stats){
   return(output)
 }
 
-changePathwayID <- function(kegg) {
+gsa_changePathwayID <- function(kegg) {
   lines <- readLines(
     "http://www.kegg.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext" )
   pathways <- do.call(
@@ -687,6 +703,33 @@ changePathwayID <- function(kegg) {
   
   return(kegg_info)
   
+}
+
+gsea_changePathwayID <- function(kegg) {
+  lines <- readLines(
+    "http://www.kegg.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext" )
+  pathways <- do.call(
+    rbind,
+    str_split( grep( "^[ABCD]\\s+\\d{5}\\s+.*?$", lines, value=TRUE ), "\\s{2,}" )
+  )
+  pathways <- as.data.frame( pathways )[-1]
+  colnames( pathways )  <- c( "kegg_id", "pathway" )
+  pathways$pathway <- as.character(pathways$pathway)
+  pathways$pathway <- gsub("-","",pathways$pathway, fixed = T)
+  pathways$pathway <- gsub(",","",pathways$pathway, fixed = T)
+  pathways$pathway <- gsub("/","",pathways$pathway, fixed = T)
+  pathways$pathway <- gsub("(","",pathways$pathway, fixed = T)
+  pathways$pathway <- gsub(")","",pathways$pathway, fixed = T)
+  pathways$pathway <- str_to_upper(pathways$pathway)
+  
+  kegg$pathway <- as.character(kegg$pathway)
+  kegg$pathway <- gsub("KEGG_","",kegg$pathway, fixed = T)
+  kegg$pathway <- gsub("_"," ", kegg$pathway, fixed = T)
+  
+  kegg_info <- merge(pathways, kegg, by="pathway")
+  kegg_info$pathway <- gsub(" ","_",kegg_info$pathway,fixed = T)
+  kegg_info <- kegg_info[,c(2,1,3:6,10)]
+  return(kegg_info)
 }
 
 string_url_builder <- function(organism, gene){

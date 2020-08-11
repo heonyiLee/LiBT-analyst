@@ -9,4 +9,26 @@
 .download_dep_info_btn {margin-bottom:15px; background-color:#00c369; color:white;}
 .download_dep_info_btn:hover {background-color:#01b563; color:white;}
 
+#heatmap {color:white;}
+
+.gsea_pathview:hover{color:blue;}
+/*.download_gsea_pathview {margin-left:20px}*/
+
+#gsa_pathview_image >img {
+  image-rendering: optimizeQuality;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
+}
+
+#gsea_up_title{margin-bottom:20px; color:#b22222;}
+#gsea_down_title{margin-bottom:20px; color:#1e90ff;}
+#gsea_pathview_image {text-align:center;}
+#gsea_pathview_image >img {
+  margin-bottom:15px;
+  image-rendering: optimizeQuality;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
+}
 #ppi_image >div >img {width:100%;}

@@ -9,7 +9,7 @@ library(shinyjqui)
 library(sortable)
 library(V8)
 library(httr)
-
+                        
 # 2019.12.30
 ui <- function(request) {shinyUI(
   dashboardPagePlus(
@@ -72,13 +72,14 @@ ui <- function(request) {shinyUI(
                            plotOutput("correlation_matrix"),
                            downloadButton("download_correlation", "Save_png")
                          ),
+                         br(),
                          box(
                            id = "volcano_box",
                            solidHeader = T,
                            width = 6,
                            plotOutput("volcano_plot", brush = "volcano_brush"),
                            DT::dataTableOutput("volcano_info"),
-                           downloadButton("download_volcano", "Save_png")
+                           downloadButton("download_volcano", "Save_png","download_volcano")
                          ),
                          box(
                            id = "heatmap_box",
@@ -174,11 +175,23 @@ ui <- function(request) {shinyUI(
               tabPanel("Results of GSEA Pathview",
                 fluidRow(
                   box(
+                    tags$head(
+                      tags$script("function gsea_pathview(d){
+                           alert(d.getAttribute('val'));
+                           Shiny.onInputChange('js.gsea.pathview',d.getAttribute('val'));}"
+                      )
+                    ),
                     id = "gsea_pathview_box",
                     solidHeader = T,
                     width = 12,
-                  )
-                  ,useShinyalert()
+                    hidden(imageOutput("gsea_pathview_image",height="1000px")),
+                    h3(id="gsea_up_title","Up-regulated:"),
+                    DT::dataTableOutput("result_of_gsea_up_regulated"),
+                    h3(id="gsea_down_title","Down-regulated:"),
+                    DT::dataTableOutput("result_of_gsea_down_regulated"),
+                    downloadButton("download_gsea_pathview","Save_GSEA_Pathview Zip", "download_gsea_pathview"),
+                  ),
+                  useShinyalert()
                 )
               ),
               tabPanel("Result of PPI Network Analysis",
@@ -190,7 +203,6 @@ ui <- function(request) {shinyUI(
                      downloadButton("ppi_image_download_btn", "Download PPI Network PNG"),
                      downloadButton("ppi_tsv_download_btn", "Download PPI Network tsv"),
                      withSpinner(uiOutput("ppi_image"))
-                     #uiOutput("ppi_image")
                    )
                    ,useShinyalert()
                  )
@@ -345,7 +357,7 @@ ui <- function(request) {shinyUI(
                          value=0.05),
             numericInput("dea_log2fc", label = HTML("Set the threshold <br/>for the log<sub>2</sub> Fold Change"),
                          value=1.5),
-            numericInput("dea_clusterNum", label = HTML("Set a number of cluster <br/>for heatmap"), value=1),
+            numericInput("dea_clusterNum", label = HTML("Set a number of cluster <br/>for heatmap"), value=""),
             tags$hr(),
             actionButton("dea_btn", "Start Draw")
           )
@@ -367,6 +379,8 @@ ui <- function(request) {shinyUI(
             uiOutput("dep_down"),
             radioButtons("gsa_set", label="Choose Data set",
                          choices = list("Case-UP" = "caseup", "Ctrl-UP" = "casedown")),
+            radioButtons("gsa_input_set", label="Choose input Data",
+                         choices = list("Total" = "total", "DEP" = "dep")),
             # radioButtons("gsa_tool", label="Choose GSA Tool", 
             #              choices = list("enrichR" = "enrichR", "DAVID" = "DAVID")),
             numericInput("set_nterm", label = HTML("Set a number of showed Term <br/>for barplot"),
@@ -384,7 +398,7 @@ ui <- function(request) {shinyUI(
           footer = fluidRow(
             tags$div(
               id="select_genelevel_stats", class="form-group shiny-input-radiogroup shiny-input-container",
-              tags$label(class="control-label", `for`="select_genelevel_stats", "Distribution type:"),
+              tags$label(class="control-label", `for`="select_genelevel_stats", "Choose stats of gene level"),
               tags$div(class="shiny-options-group",
                        tags$div(class="radio",
                                 tags$label(
@@ -416,7 +430,7 @@ ui <- function(request) {shinyUI(
           )
         ), # End of GSEA box
         gradientBox(
-          title = HTML("Protein-Protein Interaction <br/>Network Analysis <br/><br/>"),
+          title = HTML("Protein-Protein Interaction <br/>Network Analysis <br/><br/>_StringDB"),
           width = 12,
           icon = "chart-pie",
           gradientColor = "yellow",
@@ -427,7 +441,7 @@ ui <- function(request) {shinyUI(
             numericInput("input_num_toppi", label = HTML("Choose number of input gene <br/> (Defualt : # of DEP)"),value=100),
             tags$div(
               id="select_ppi_condition", class="form-group shiny-input-radiogroup shiny-input-container",
-              tags$label(class="control-label", `for`="select_ppi_condition", "Distribution type:"),
+              tags$label(class="control-label", `for`="select_ppi_condition", "Choose condition of gene select"),
               tags$div(class="shiny-options-group",
                        tags$div(class="radio",
                                 tags$label(
@@ -445,6 +459,12 @@ ui <- function(request) {shinyUI(
                                 tags$label(
                                   tags$input(type="radio", name="select_ppi_condition", value="log2fc",
                                              tags$span(HTML("log<sub>2</sub>FoldChange")))
+                                )
+                       ),
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="select_ppi_condition", value="Gene_Name",
+                                             tags$span(HTML("Gene Name")))
                                 )
                        )
               )

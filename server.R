@@ -6,7 +6,7 @@ library(sortable)
 library(SummarizedExperiment)
 library(ggplot2)
 library(edgeR)
-library(NbClust)
+library(factoextra)
 library(enrichR)
 library(tibble)
 library(gage)
@@ -14,6 +14,7 @@ library(fgsea)
 library(pathview)
 library(V8)
 library(httr)
+library(zip)
 
 
 source("function.R")
@@ -27,6 +28,8 @@ shinyServer(function(input,output, session){
   info <- c()
   sample_num <- c()
   time <- c()
+  gsa_pathview_dir <- c()
+  gsea_pathview_dir <- c()
   
   ############################
   ##      RENDERING         ##
@@ -271,13 +274,33 @@ shinyServer(function(input,output, session){
       timeLine <<- rbind(timeLine,newTL)
       addTimeLine(timeLine)
     }
+    make_dir()
+  })
+  
+  observeEvent(input$thres_type, {
+    updateNumericInput(session, "dea_clusterNum", value="")
+    if(input$thres_type == "none"){
+      shinyjs::hide("dea_pvalue")
+      shinyjs::hide("dea_log2fc")
+    } else{
+      shinyjs::show("dea_pvalue")
+      shinyjs::show("dea_log2fc")
+    }
   })
   
   observeEvent(input$dea_btn, {
+    shinyalert("Start Differential\nexperimental analysis!","It will be start after calculate\nthe best k of kmeans cluster for heatmap", type="info", timer = 10000,
+               closeOnClickOutside = T, closeOnEsc = T)
     sig <- which(rowData(dep())$significant==T)
     
-    best_k <- optimize_k_input()
-    updateNumericInput(session, "dea_clusterNum", value=best_k)
+    best_k <- c()
+    try(best_k <- optimize_k_input())
+    if(is.na(input$dea_clusterNum) & is.null(best_k)){
+      best_k = 2
+      updateNumericInput(session, "dea_clusterNum", value=best_k)
+    } else if(is.na(input$dea_clusterNum) & !is.null(best_k)){
+      updateNumericInput(session, "dea_clusterNum", value=best_k)
+    } 
     
     updateNumericInput(session, "input_num_toppi", value=length(sig))
     
@@ -348,7 +371,7 @@ shinyServer(function(input,output, session){
   })
   
   output$download_exp_btn <- downloadHandler(
-    filename = function() {paste0("Expression_data_", Sys.Date(), ".csv")},
+    filename = function() {paste0(input$file_type,"_Expression_data_", Sys.Date(), ".csv")},
     content = function(file) {
       if(!is.null(ready_for_dea())){
         data_se <- ready_for_dea()
@@ -359,7 +382,7 @@ shinyServer(function(input,output, session){
   )
   
   output$download_dep_info_btn <- downloadHandler(
-    filename = function() {paste0("DEP_info_data_", Sys.Date(), ".csv")},
+    filename = function() {paste0(input$file_type,"_DEP_info_data_", Sys.Date(), ".csv")},
     content = function(file) {
       if(!is.null(data_results())){
         write.csv(data_results(),file,row.names=F,quote=F)
@@ -495,11 +518,99 @@ shinyServer(function(input,output, session){
     }
   )
   
+  observeEvent(input$gsa_btn, {
+    kegg_info <- reverted_gsa_kegg()
+    pathway_choices <- kegg_info$Term
+    updateSelectInput(session, "pathID_selector",
+                      choices = pathway_choices, selected = "")
+  })
+  
+  
+  observeEvent(input$pathID_selector, {
+    # output$pathview_result <- pathway_graph()
+    if(input$pathID_selector!="") {
+      showModal(modalDialog(
+        title=input$pathID_selector,
+        size=c("l"),
+       renderImage({
+            outfile <- pathway_graph()
+
+            list(src=outfile, contentType="image/png+xml",
+                 width="100%",height="100%",
+                 alt="Pathview_graph")}, deleteFile=F),
+       footer=NULL,
+       easyClose=TRUE
+      ))
+      # output$pathview_result <- renderImage({
+      #   outfile <- pathway_graph()
+      #   
+      #   list(src=outfile, contentType="image/png+xml",
+      #        width="100%", height="100%",
+      #        alt="Pathview_graph")}, deleteFile=F)
+      
+    }
+    
+  })
+  
+  pathway_graph <- reactive({
+    kegg_info <- reverted_gsa_kegg()
+    rowdt <- rowData(dep())
+    if(input$gsa_input_set == "dep"){
+      rowdt <- rowdt[rowdt$significant == T,]
+    }
+    pathway_name <- selected_pathway()
+    
+    fc <- rowdt$Total_B_vs_Total_M_diff
+    names(fc) <- rowdt$name
+    
+    pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
+    
+    dir <- getwd()
+    dir <- strsplit(dir,"/",fixed = T)
+    dir <- as.character(unlist(dir))
+    dir <- dir[length(dir)]
+    if(dir != gsa_pathview_dir){
+      setwd(gsa_pathview_dir)
+    }
+    pathview_dir <- "./xml"
+    outfile <- paste0("hsa", pathid,".pathview.png")
+    pathview(fc, pathway.id=pathid, gene.idtype="SYMBOL", species = "hsa",
+             kegg.dir=pathview_dir)
+    
+    return(outfile)
+  })
+  
+  output$download_gsa_pathview <- downloadHandler(
+    filename = function() {
+      paste0("Pathview_", selected_pathway(), ".png")},
+    content = function(file) {
+      file.copy(pathway_graph(), file)
+    },
+    contentType = "image/png"
+  )
+  
   observeEvent(input$gsea_btn, {
     if(!is.null(res_test())){
       shinyalert("Start GSEA!","Please wait for a while", type="info", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
+      
       result_gsea()
+      res <- reverted_gsea_kegg()
+      
+      up_res <- res[res$Enrichment=="Up-regulated",]
+      up_res <- up_res[,-ncol(up_res)]
+      up_res$pathway <- paste0("<a onclick='gsea_pathview(this)', class='gsea_pathview' val='",up_res$pathway,"'>",up_res$pathway,"</a>")
+      down_res <- res[res$Enrichment=="Down-regulated",]
+      down_res <- down_res[,-ncol(down_res)]
+      down_res$pathway <- paste0("<a onclick='gsea_pathview(this)', class='gsea_pathview' val='",down_res$pathway,"'>",down_res$pathway,"</a>")
+      
+      output$result_of_gsea_up_regulated <- DT::renderDataTable({
+        DT::datatable(up_res,options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)), escape = F) %>% DT::formatRound(colnames(up_res), digits=2)
+      }) 
+      
+      output$result_of_gsea_down_regulated <- DT::renderDataTable({
+        DT::datatable(down_res,options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)), escape = F) %>% DT::formatRound(colnames(down_res), digits=2)
+      }) 
       plot_gsea_gobp()
       plot_gsea_gocc()
       plot_gsea_gomf()
@@ -548,68 +659,55 @@ shinyServer(function(input,output, session){
     }
   )
   
-  
-  observeEvent(input$gsa_btn, {
-    kegg_info <- reverted_gsa_kegg()
-    pathway_choices <- kegg_info$Term
-    updateSelectInput(session, "pathID_selector",
-                      choices = pathway_choices, selected = "")
-  })
-  
-  
-  observeEvent(input$pathID_selector, {
-    # output$pathview_result <- pathway_graph()
-    if(input$pathID_selector!="") {
-      showModal(modalDialog(
-        title=input$pathID_selector,
-        size=c("l"),
-       renderImage({
-            outfile <- pathway_graph()
-
-            list(src=outfile, contentType="image/png+xml",
-                 width="100%", height="100%",
-                 alt="Pathview_graph")}, deleteFile=F),
-       footer=NULL,
-       easyClose=TRUE
-      ))
-      # output$pathview_result <- renderImage({
-      #   outfile <- pathway_graph()
-      #   
-      #   list(src=outfile, contentType="image/png+xml",
-      #        width="100%", height="100%",
-      #        alt="Pathview_graph")}, deleteFile=F)
-      
-    }
-    
-  })
-  
-  pathway_graph <- reactive({
-    kegg_info <- reverted_gsa_kegg()
+  observeEvent(input$js.gsea.pathview,{
+    shinyjs::show("gsea_pathview_image")
+    kegg_info <- reverted_gsea_kegg()
     rowdt <- rowData(dep())
-    rowdt <- rowdt[rowdt$significant==T,]
-    pathway_name <- selected_pathway()
-    
+    pathway_name <- input$js.gsea.pathview
+    print(pathway_name)
     fc <- rowdt[,grep("diff",colnames(rowdt))]
     names(fc) <- rowdt$name
     
-    pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
+    pathid <- as.character(kegg_info[kegg_info$pathway==pathway_name, "kegg_id"])
     
+    dir <- getwd()
+    dir <- strsplit(dir,"/",fixed = T)
+    dir <- as.character(unlist(dir))
+    dir <- dir[length(dir)]
+    if(dir != gsea_pathview_dir){
+      setwd(gsea_pathview_dir)
+    }
+    pathview_dir <- "./xml"
     outfile <- paste0("hsa", pathid,".pathview.png")
-    
-    
     pathview(fc, pathway.id=pathid, gene.idtype="SYMBOL", species = "hsa",
-             kegg.dir="./PATHVIEW/")
+             kegg.dir=pathview_dir)
     
-    return(outfile)
-  })
+    output$gsea_pathview_image <-  renderImage({
+      list(src=outfile, contentType="image/png",
+           width="100%", height="100%",
+           alt=pathway_name)}, deleteFile=F
+    )
+  });
 
-  output$download_pathview <- downloadHandler(
+  output$download_gsea_pathview <- downloadHandler(
     filename = function() {
-      paste0("Pathview_", selected_pathway(), ".png")},
+      paste0(gsea_pathview_dir,".zip")},
     content = function(file) {
-      file.copy(pathway_graph(), file)
-    },
-    contentType = "image/png"
+      dir <- getwd()
+      dir <- strsplit(dir,"/",fixed = T)
+      dir <- as.character(unlist(dir))
+      dir <- dir[length(dir)]
+      if(dir == gsea_pathview_dir){
+        setwd("../")
+      }
+      png_list <- list.files(path=gsea_pathview_dir, pattern=".png")
+      file_set <- c()
+      for(i in 1:length(png_list)){
+        file_path <- paste0("./",gsea_pathview_dir,"/",png_list[i])  
+        file_set <- c(file_set, file_path)
+      }
+      zip(file,file_set)
+    }
   )
   
   observeEvent(input$input_num_toppi,{
@@ -693,6 +791,28 @@ shinyServer(function(input,output, session){
     }
   })
   
+  make_dir <- reactive({
+    gsa_pathview_dir <<- paste0("GSA_PATHVIEW_",Sys.time())
+    gsa_pathview_dir <<- gsub(" ","_",gsa_pathview_dir,fixed = T)
+    gsa_pathview_dir <<- gsub(":","-",gsa_pathview_dir,fixed = T)
+    
+    gsa_exist <- dir.exists(file.path(gsa_pathview_dir))
+    if(!gsa_exist){
+      dir.create(gsa_pathview_dir)
+      dir.create(paste0(gsa_pathview_dir,"/xml"))
+    }
+    
+    gsea_pathview_dir <<- paste0("GSEA_PATHVIEW_",Sys.time())
+    gsea_pathview_dir <<- gsub(" ","_",gsea_pathview_dir,fixed = T)
+    gsea_pathview_dir <<- gsub(":","-",gsea_pathview_dir,fixed = T)
+    
+    gsea_exist <- dir.exists(file.path(gsea_pathview_dir))
+    if(!gsea_exist){
+      dir.create(gsea_pathview_dir)
+      dir.create(paste0(gsea_pathview_dir,"/xml"))
+    }
+  })
+  
   main_data <- reactive({NULL})
   main_data <- eventReactive(input$file_upload_btn, {
     temp_df <- file_input()
@@ -767,6 +887,7 @@ shinyServer(function(input,output, session){
     
     preprocessing_options <- input$use_options
     for(i in 1:length(preprocessing_options)) {
+      print(preprocessing_options[i])
       switch(preprocessing_options[i],
              "Use_valid_value" = {
                data_se <- use_valid_option(data_se, case, control, input$valid_value)
@@ -920,9 +1041,15 @@ shinyServer(function(input,output, session){
     
     input_vc <- data_frame(name=dep_rowData$name, lfc=dep_rowData[,lfc_pos], 
                            p=-log10(as.numeric(dep_rowData[,pv_pos])), sig=dep_rowData$significant)
-    plot_volcano(dep(), contrast=contrast, label_size=2, add_names=F) + 
-      geom_point(data = filter(input_vc,sig), aes(lfc, p), color = "red", size= 2)+
-      labs(x=expression(paste(log[2],FoldChange)),y=expression(paste(-log[10],P.value)))
+    if(input$thres_type != "none"){
+      plot_volcano(dep(), contrast=contrast, label_size=2, add_names=F) + 
+        geom_point(data = filter(input_vc,sig), aes(lfc, p), color = "red", size= 2)+
+        labs(x=expression(paste(log[2],FoldChange)),y=expression(paste(-log[10],P.value)))
+    } else{
+      plot_volcano(dep(), contrast=contrast, label_size=2, add_names=F) + 
+        geom_point(data = filter(input_vc,sig), aes(lfc, p), color = "black", size= 2)+
+        labs(x=expression(paste(log[2],FoldChange)),y=expression(paste(-log[10],P.value)))
+    }
   })
   
   pca_input_noSample <- reactive({
@@ -980,7 +1107,7 @@ shinyServer(function(input,output, session){
   ########################### GSA ######################################
   result_gsa <- reactive({
     data <- rowData(dep())
-    res_gsa <- gsa(data,input$gsa_set)#,input$gsa_tool
+    res_gsa <- gsa(data,input$gsa_input_set,input$gsa_set)#,input$gsa_tool
     return(res_gsa)
   })
   
@@ -1071,7 +1198,7 @@ shinyServer(function(input,output, session){
   
   reverted_gsa_kegg <- reactive({
     kegg <- result_gsa_kegg()
-    kegg <- changePathwayID(kegg)
+    kegg <- gsa_changePathwayID(kegg)
     return(kegg)
   })
   
@@ -1093,7 +1220,7 @@ shinyServer(function(input,output, session){
   
  ########################### GSEA ######################################
   result_gsea <- reactive({
-    rowdata <- rowData(dep())
+    rowdata <- rowData(res_test())
     res_gsea <- gsea(rowdata, input$select_genelevel_stats)
     return(res_gsea)
   })
@@ -1160,6 +1287,12 @@ shinyServer(function(input,output, session){
     res_gsea <- result_gsea()
     plot_kegg <- res_gsea$plot_Kegg
     output$kegg_gsea_plot <- renderPlot(plot_kegg)
+  })
+  
+  reverted_gsea_kegg <- reactive({
+    kegg <- result_gsea_kegg()
+    kegg <- gsea_changePathwayID(kegg)
+    return(kegg)
   })
   
   ########################### PPI network ######################################
@@ -1234,4 +1367,9 @@ shinyServer(function(input,output, session){
       )
     })
   } # End of addTimeLine
+  
+  session$onSessionEnded(function() {
+    unlink(gsea_pathview_dir,recursive = T)
+    unlink(gsa_pathview_dir,recursive = T)
+  })
 })
