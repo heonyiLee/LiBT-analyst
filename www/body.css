@@ -1,4 +1,24 @@
+#pca_plot_box .form-group .shiny-input-container {margin-left:500px;}
+
+.modal {
+  text-align:center;
+}
+
+@media screen and (min-width:768px) {
+  .modal:before {
+    display: inline-block;
+    vertical-align: middle;
+    content:"";
+  }
+}
+
 .modal-dialog {
-  width: fit-content !important;
-  height: fit-content !important;
+  background-color:transparent;
+  width:fit-content;
+  height:100vh;
+  vertical-align: middle;
+}
+
+.modal-content {
+  background-color:transparent;
 }

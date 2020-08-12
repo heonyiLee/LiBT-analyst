@@ -510,6 +510,46 @@ change_Sig <- function(data_rejection,pvalue,log2fc){
   return(dep_rowData)
 }
 
+get_gene_cluster <- function(assay, rowData, k){
+  assay <- as.data.frame(assay)
+  rowData <- as.data.frame(rowData)
+  data <- cbind(assay,rowData)
+  data <- subset(data,cut=significant==T)
+  data <- data[,c(1:ncol(assay))]
+  mean <- rowMeans(data, na.rm=T)
+  df <- data-mean
+  
+  set.seed(1)
+  df_kmeans <- kmeans(df, k)
+  order <- data.frame(df) %>%
+    cbind(., cluster = df_kmeans$cluster) %>%
+    mutate(row = apply(.[, seq_len(ncol(.) - 1)], 1, function(x) max(x))) %>%
+    group_by(cluster) %>%
+    summarize(index = sum(row)/n()) %>%
+    arrange(desc(index)) %>%
+    pull(cluster) %>%
+    match(seq_len(k), .)
+  df_kmeans$cluster <- order[df_kmeans$cluster]
+  result <- data.frame(geneName = rowData$name, ID = rowData$ID, cluster = df_kmeans$cluster)
+  return(result)
+}
+
+get_pca_df <- function(assay, colData, n){
+  assasy <- as.data.frame(assay)
+  colData <- as.data.frame(colData)
+  var <- apply(assay, 1, sd)
+  df <- assay[order(var, decreasing = TRUE)[seq_len(n)],]
+  
+  # Calculate PCA
+  pca <- prcomp(t(df), scale = FALSE)
+  pca_df <- pca$x %>%
+    data.frame() %>%
+    rownames_to_column() %>%
+    left_join(., data.frame(colData), by = c("rowname" = "ID"))
+  
+  return(pca_df)
+}
+
 gsa <- function(data,set,tool){
   data <- data[,c(1,7)]
   colnames(data) <- c("genes","log2fc")
@@ -533,7 +573,9 @@ enrichR <- function(genes){
   return(res_er)
 }
 
-
+gsea <- function(rowData){
+ 
+}
 
 changePathwayID <- function(kegg) {
   lines <- readLines(
@@ -566,5 +608,3 @@ changePathwayID <- function(kegg) {
 #   grid::grid.raster(img)
 #   if(!save_image) invisible(file.remove(filename))
 # }
-
-
