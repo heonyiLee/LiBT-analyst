@@ -49,7 +49,7 @@ shinyServer(function(input,output, session){
                  closeOnClickOutside = T, closeOnEsc = T)
       reset("fileBrowser")
     } else {
-      shinyalert("Data will be converted to log2 scale in the following order!", type = "info")
+      
       if(input$file_type=="TMT"){
         state <- colnames(temp)[grep("normalized", colnames(temp), ignore.case = T)]
         updateRadioButtons(session, "TMT_input_option", label="Get Normalized TMT data",
@@ -97,6 +97,7 @@ shinyServer(function(input,output, session){
       shinyalert("Choose option!", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
     } else {
+      shinyalert("Data will be converted to log2 scale in the following order!", type = "info")
       render_df <- main_data()
       if(length(render_df) != 0){
         if(input$file_type != "TMT"){
@@ -172,8 +173,9 @@ shinyServer(function(input,output, session){
       # res <- round(assay(data_se),digits=2)
       res <- assay(data_se)
       output$uploaded_file_header <- DT::renderDataTable({
-        DT::datatable(res,options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15))) %>% DT::formatRound(colnames(res), digits=2)
-      }) 
+        DT::datatable(res,options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)), selection="none") %>% 
+          DT::formatRound(colnames(res), digits=2)
+      }, server=F) 
       
       tmp <- c()
       preprocessing_options <- input$use_options
@@ -452,63 +454,112 @@ shinyServer(function(input,output, session){
     pathway_choices <- kegg_info$Term
     updateSelectInput(session, "pathID_selector",
                       choices = pathway_choices, selected = "")
+    
+    output$topOfKeggDT <- DT::renderDataTable({
+      DT::datatable(top_of_kegg(), options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)),
+                    selection ="single") 
+    }, server=T)
   })
   
+  
+  
+  
+  
+  # observeEvent(input$pathID_selector,{
+  #   if(!is.null(input$topOfKeggDT_rows_selected)){
+  #     dtProxy = DT::dataTableProxy("topOfKeggDT", session=session)
+  #     DT::reloadData(dtProxy, clearSelection=c("all"))
+  #     
+  #     if(input$pathID_selector != ""){
+  #       output$pathview_result <- renderImage({
+  #         outfile <- pathway_graph()
+  #         
+  #         list(src=outfile, contentType="image/png",
+  #              width="100%", height="100%",
+  #              alt="Pathview_graph")}, deleteFile=F)
+  #       
+  #     }
+  #   }
+  # })
+  # 
+  # 
+  # observeEvent(input$topOfKeggDT_rows_selected, {
+  #   if(!is.null(input$topOfKeggDT_rows_selected)){
+  #     output$pathview_result <- renderImage({
+  #       outfile <- pathway_graph()
+  #       list(src=outfile, contentType="image/png",
+  #            width="100%", height="100%",
+  #            alt="Pathview_graph")}, deleteFile=F)
+  #   }
+  # })
   
   observeEvent(input$pathID_selector, {
-    # output$pathview_result <- pathway_graph()
-    if(input$pathID_selector!="") {
-      showModal(modalDialog(
-        title=input$pathID_selector,
-        size=c("l"),
-       renderImage({
-            outfile <- pathway_graph()
-
-            list(src=outfile, contentType="image/png+xml",
-                 alt="Pathview_graph")}, deleteFile=F),
-       footer=NULL,
-       easyClose=TRUE
-      ))
-      # output$pathview_result <- renderImage({
-      #   outfile <- pathway_graph()
-      #   
-      #   list(src=outfile, contentType="image/png+xml",
-      #        width="100%", height="100%",
-      #        alt="Pathview_graph")}, deleteFile=F)
-      
+    if(!is.null(input$topOfKeggDT_rows_selected)){
+      dtProxy = DT::dataTableProxy("topOfKeggDT", session=session)
+      DT::reloadData(dtProxy, clearSelection=c("all"))
     }
-    
   })
   
-  pathway_graph <- reactive({
-    kegg_info <- reverted_kegg()
-    rowdt <- rowData(dep())
-    pathway_name <- selected_pathway()
-    
-    fc <- rowdt$Total_B_vs_Total_M_diff
-    names(fc) <- rowdt$name
-    
-    pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
-    
-    outfile <- paste0("hsa", pathid,".pathview.png")
-    
-    
-    pathview(fc, pathway.id=pathid, gene.idtype="SYMBOL", species = "hsa",
-             kegg.dir="./PATHVIEW/")
-    
-    return(outfile)
-    
-
+  observeEvent(input$render_pathway_btn,{
+    if(input$pathID_selector != "") {
+      outfile <- pathway_graph()
+      
+      output$pathview_result <- renderImage({
+        list(src=outfile, contentType="image/png",
+             width="100%", height="100%",
+             alt="Pathview_graph")}, deleteFile=F)
+    } 
   })
 
+  observeEvent(input$topOfKeggDT_rows_selected, {
+    if(input$pathID_selector!=""){
+      req(input$pathID_selector)
+      updateSelectInput(session, "pathID_selector",
+                        selected = "")
+      dtProxy = DT::dataTableProxy("topOfKeggDT", session=session)
+      DT::selectRows(dtProxy, selected=input$topOfKeggDT_rows_selected)
+    }
+    
+    outfile <- pathway_graph()
+          
+    output$pathview_result <- renderImage({
+      list(src=outfile, contentType="image/png",
+           width="100%", height="100%",
+           alt="Pathview_graph")}, deleteFile=F)
+  })
+  
   output$download_pathview <- downloadHandler(
     filename = function() {
-      paste0("Pathview_", selected_pathway(), ".png")},
+      paste0("Pathview_", pathway_graph())},
+    # paste0("Pathview_", selected_pathway(), ".png")},
     content = function(file) {
       file.copy(pathway_graph(), file)
     },
     contentType = "image/png"
   )
+  
+  
+  observeEvent(input$dimension,{
+    req(input$zoom_pathway_btn)
+    width <- (input$dimension[1])*0.7
+    height <- (input$dimension[2])*0.7
+    
+    showModal(modalDialog(
+      renderImage({
+        outfile <- pathway_graph()
+        # width <- (session$clientData$output_download_pathview_width)*0.7
+        # height <- (session$clientData$output_download_pathview_height)*0.7
+        
+        list(src=outfile, contentType="image/png",
+             width=width, height=height,
+             alt="Pathview_graph")}, deleteFile=F),
+      easyClose = TRUE,
+      footer=NULL
+    ))
+  })
+  
+  
+  
   
   
   ##--------------------------------------------------- reactive/EventReactive Section
@@ -794,9 +845,44 @@ shinyServer(function(input,output, session){
     data_results <- get_results(dep())
   })
   
+  
+  
   selected_pathway <- reactive({
-    selected_pathway <- input$pathID_selector
+    if(!is.null(input$topOfKeggDT_rows_selected)){
+      kegg_info <- top_of_kegg()
+      selected_pathway <- kegg_info[input$topOfKeggDT_rows_selected, 1]
+    } else if(input$pathID_selector !="") {
+      selected_pathway <- input$pathID_selector  
+    } 
     return(selected_pathway)
+  })
+  
+  top_of_kegg <- reactive({
+    kegg_info <- reverted_kegg()
+    top_kegg <- kegg_info[order(kegg_info$Adjusted.P.value, decreasing=F),]
+    top_kegg <- head(top_kegg, 10)
+    top_kegg <- dplyr::select(top_kegg, -P.value, -matches("Old|Odds|Score"))
+    return(top_kegg)
+  })
+  
+  
+  pathway_graph <- eventReactive(list(input$render_pathway_btn, input$topOfKeggDT_rows_selected),{
+    pathway_name <- selected_pathway()
+    kegg_info <- reverted_kegg()
+    rowdt <- rowData(dep())
+
+    fc_cols <- colnames(rowdt)[grepl("diff",colnames(rowdt))]
+    fc <- rowdt[,fc_cols]
+    names(fc) <- rowdt$name
+
+    pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
+
+    outfile <- paste0("hsa", pathid,".pathview.png")
+
+    pathview(fc, pathway.id=pathid, gene.idtype="SYMBOL", species = "hsa",
+             kegg.dir="./PATHVIEW/")
+
+    return(outfile)
   })
   
   
@@ -813,7 +899,8 @@ shinyServer(function(input,output, session){
     # input_vc <- input_vc %>% filter(input_vc, sig)
     df <- brushedPoints(input_vc, input$volcano_brush, xvar="log<sub>2</sub>FC", yvar = "-log<sub>10</sub>P.value")
     # return(df)
-  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)), escape = F) %>%  DT::formatRound(c(2:3),digits=2))
+  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)), escape = F, selection="none") %>%  DT::formatRound(c(2:3),digits=2))
+  
   
   
   ########################### GSA ######################################

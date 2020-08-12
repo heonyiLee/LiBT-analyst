@@ -9,7 +9,7 @@ library(shinyjqui)
 library(sortable)
 
 
-# 2019.12.30
+
 ui <- function(request) {shinyUI(
   dashboardPagePlus(
     dashboardHeaderPlus(
@@ -126,13 +126,28 @@ ui <- function(request) {shinyUI(
               tabPanel("Results of Pathview",
                        fluidRow(
                          box(
-                           id = "pathview_box",
+                           title="Top 10 of KEGG pathway",
+                           id = "top10_pathview_box",
                            solidHeader = T,
-                           width = 6,
-                           # plotOutput("pathview_result"),
+                           width = 12,
+                           DT::dataTableOutput("topOfKeggDT")
+                         ),
+                         box(
+                           id = "pathview_select_box",
+                           solidHeader = T,
+                           width=6,
                            selectInput("pathID_selector", label="Choose a pathway ID",
                                        choices=""),
-                           downloadButton("download_pathview", "Save_pathview")
+                           actionButton("render_pathway_btn", "Render pathway"),
+                           actionButton("zoom_pathway_btn", "Zoom"),
+                           downloadButton("download_pathview", "Save pathway")
+                         
+                         ),
+                         box(
+                           id = "pathview_result_box",
+                           solidHeader = T,
+                           width = 6,
+                           plotOutput("pathview_result")
                          )
                          ,useShinyalert()
                        )

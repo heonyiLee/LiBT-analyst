@@ -1,7 +1,19 @@
- $(document).ready(function(){
-
-   $("#data_table .load-container").hide();
-   $("#file_upload_btn").click(function(){
+$(document).ready(function(){
+  dimension = [0, 0];
+  $("#zoom_pathway_btn").click(function(){
+    dimension[0] = window.innerWidth;
+    dimension[1] = window.innerHeight;
+    Shiny.onInputChange("dimension", dimension);
+  });
+  
+  $(window).resize(function(e) {
+    dimension[0] = window.innerWidth;
+    dimension[1] = window.innerHeight;
+    Shiny.onInputChange("dimension", dimension);
+  });
+  
+  $("#data_table .load-container").hide();
+  $("#file_upload_btn").click(function(){
      $("#data_table .load-container").show();
    });
    

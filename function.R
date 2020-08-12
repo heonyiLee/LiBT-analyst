@@ -592,19 +592,3 @@ changePathwayID <- function(kegg) {
   return(kegg_info)
   
 }
-
-# library(org.Hs.eg.db)
-# mapped <- mappedkeys(org.Hs.egPATH2EG)
-# L <- as.list(org.Hs.egPATH2EG[mapped])
-# Kegg_ID <- names(L)
-
-
-# see_pathview <- function(..., save_image = FALSE)
-# {
-#   msg <- capture.output(pathview::pathview(...), type = "message")
-#   msg <- grep("image file", msg, value = T)
-#   filename <- sapply(strsplit(msg, " "), function(x) x[length(x)])
-#   img <- png::readPNG(filename)
-#   grid::grid.raster(img)
-#   if(!save_image) invisible(file.remove(filename))
-# }
