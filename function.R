@@ -524,21 +524,23 @@ get_optimize_k <- function(assay, sig_gene){
   
   max_col = ncol(data)-1
   data <- t(data)
-  fiz <- fviz_nbclust(data, kmeans,method="gap_stat", diss=dist(data,method="euclidean"), k.max=max_col)
+  fiz <- fviz_nbclust(data, kmeans, method="silhouette", diss=dist(data,method="euclidean"), k.max=max_col)
   #fiz <- fviz_nbclust(data, kmeans,method="wss", diss=dist(data,method="euclidean"), k.max=max_k)
-  gap <- fiz[["data"]][["gap"]]
-  best_k <- c()
-  for(i in 2 : (length(gap)-1)){
-    first <- gap[i-1]
-    second <- gap[i]
-    third <- gap[i+1]
-    if(second > first & second > third){
-      best_k <- as.numeric(i)
-      break
-    }else{
-      i <- i+1
-    }
-  }
+  # gap <- fiz[["data"]][["gap"]]
+  y <- fiz[["data"]][["y"]]
+  best_k <- which(y==max(y))
+  # best_k <- c()
+  # for(i in 2 : (length(gap)-1)){
+  #   first <- gap[i-1]
+  #   second <- gap[i]
+  #   third <- gap[i+1]
+  #   if(second > first & second > third){
+  #     best_k <- as.numeric(i)
+  #     break
+  #   }else{
+  #     i <- i+1
+  #   }
+  # }
 
   return(best_k)
 }
