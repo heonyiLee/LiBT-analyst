@@ -6,10 +6,15 @@ library(sortable)
 library(SummarizedExperiment)
 library(ggplot2)
 library(edgeR)
+library(NbClust)
 library(enrichR)
 library(tibble)
-library(phenoTest)
+library(gage)
+library(fgsea)
 library(pathview)
+library(V8)
+library(httr)
+
 
 source("function.R")
 # 2019.12.30
@@ -99,6 +104,13 @@ shinyServer(function(input,output, session){
     } else {
       shinyalert("Data will be converted to log2 scale in the following order!", type = "info")
       render_df <- main_data()
+      output$uploaded_file_header <- DT::renderDataTable({
+        Sys.sleep(2)
+        render_df}, 
+        options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
+      
+      samples <- total_samples()
+      updatePickerInput(session, "case_group_selection", choices = samples)
       if(length(render_df) != 0){
         if(input$file_type != "TMT"){
           option <- c()
@@ -114,22 +126,28 @@ shinyServer(function(input,output, session){
           newTL <- data.frame(step="Data Input",info=info,
                               sample_num=as.numeric(nrow(render_df)),
                               time=as.character(Sys.time()),color="maroon",icon="file-upload")
-          timeLine <<- rbind(timeLine,newTL)
+        
+          if(nrow(timeLine)!=2){
+            timeLine <<- rbind(timeLine,newTL)
+          } else{
+            timeLine[2,] <<- newTL
+          }
+          
           addTimeLine(timeLine)
         } else{
           info <- paste0("* Is normalized ? : ", input$TMT_input_option)
           newTL <- data.frame(step="Data Input",info=info,
                               sample_num=as.numeric(nrow(render_df)),
                               time=as.character(Sys.time()),color="maroon",icon="file-upload")
-          timeLine <<- rbind(timeLine,newTL)
+          
+          if(nrow(timeLine)!=2){
+            timeLine <<- rbind(timeLine,newTL)
+          } else{
+            timeLine[2,] <<- newTL
+          }
+          
           addTimeLine(timeLine)
         }
-        output$uploaded_file_header <- DT::renderDataTable({
-          render_df}, 
-          options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)))
-        
-        samples <- total_samples()
-        updatePickerInput(session, "case_group_selection", choices = samples)
       }
     }
   })
@@ -240,6 +258,7 @@ shinyServer(function(input,output, session){
                  closeOnClickOutside = T, closeOnEsc = T)
     }
     
+    shinyjs::show("download_exp_btn")
   })
   
   observeEvent(input$test_btn, {
@@ -257,31 +276,18 @@ shinyServer(function(input,output, session){
   })
   
   observeEvent(input$dea_btn, {
-    print(dep())
-    withProgress(message = 'Plots calculations are in progress',
-                 detail = 'Please wait for a while', value = 0, {
-                   for (i in 1:10) {
-                     incProgress(1/10)
-                     Sys.sleep(0.25)
-                   }
-                 })
-    
     sig <- which(rowData(dep())$significant==T)
-    if(input$thres_type == "none"){
-      info <- paste0("* Threshold type : ", input$thres_type,"\n",
-                     "* The number of cluster : ", input$dea_clusterNum)
-    } else{
-      info <- paste0("* Threshold type : ", input$thres_type,"\n",
-                     "* Threshold value for\n  ", 
-                     input$thres_type, " : ", input$dea_pvalue,"\n",
-                     "  log2FC : ", input$dea_log2fc,"\n",
-                     "* The number of cluster : ", input$dea_clusterNum)
-    }
-    newTL <- data.frame(step="DEA_Visualization",info=info,
-                        sample_num=length(sig),
-                        time=as.character(Sys.time()),color="green",icon="chart-bar")
-    timeLine <<- rbind(timeLine,newTL)
-    addTimeLine(timeLine)
+    
+    best_k <- optimize_k_input()
+    updateNumericInput(session, "dea_clusterNum", value=best_k)
+    
+    updateNumericInput(session, "input_num_toppi", value=length(sig))
+    
+    # assay <- assay(dep())
+    # write.csv(assay,"D:/assay_dep.csv",quote = F)
+    # rowData <- rowData(dep())
+    # write.csv(rowData,"D:/rowData_dep.csv", quote = F)
+    # 
     
     if(!is.null(ready_for_dea())){
       output$volcano_plot <- renderPlot({
@@ -305,6 +311,14 @@ shinyServer(function(input,output, session){
         heatmap_input()
       })
       
+      withProgress(message = 'Plots calculations are in progress',
+                   detail = 'Please wait for a while', value = 0, {
+                     for (i in 1:20) {
+                       incProgress(1/20)
+                       Sys.sleep(0.25)
+                     }
+                   })
+      
       # if(!is.null(heatmap_input())){
       shinyalert("Complete Visualization!", type="success", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
@@ -314,7 +328,46 @@ shinyServer(function(input,output, session){
     }
     
     data_results()
+    shinyjs::show("download_dep_info_btn")
+  
+    if(input$thres_type == "none"){
+      info <- paste0("* Threshold type : ", input$thres_type,"\n",
+                     "* The number of cluster : ", input$dea_clusterNum)
+    } else{
+      info <- paste0("* Threshold type : ", input$thres_type,"\n",
+                     "* Threshold value for\n  ", 
+                     input$thres_type, " : ", input$dea_pvalue,"\n",
+                     "  log2FC : ", input$dea_log2fc,"\n",
+                     "* The number of cluster : ", input$dea_clusterNum)
+    }
+    newTL <- data.frame(step="DEA_Visualization",info=info,
+                        sample_num=length(sig),
+                        time=as.character(Sys.time()),color="green",icon="chart-bar")
+    timeLine <<- rbind(timeLine,newTL)
+    addTimeLine(timeLine)
+    
+    
   })
+  
+  output$download_exp_btn <- downloadHandler(
+    filename = function() {paste0("Expression_data_", Sys.Date(), ".csv")},
+    content = function(file) {
+      if(!is.null(ready_for_dea())){
+        data_se <- ready_for_dea()
+        res <- assay(data_se)
+        write.csv(res,file,quote=F)
+      }
+    }
+  )
+  
+  output$download_dep_info_btn <- downloadHandler(
+    filename = function() {paste0("DEP_info_data_", Sys.Date(), ".csv")},
+    content = function(file) {
+      if(!is.null(data_results())){
+        write.csv(data_results(),file,row.names=F,quote=F)
+      }
+    }
+  )
   
   observeEvent(input$show_sampleID ,{
     if(input$show_sampleID){
@@ -331,10 +384,18 @@ shinyServer(function(input,output, session){
   output$download_pca <- downloadHandler(
     filename = function() {paste0("PCA_plot_", Sys.Date(), ".png")},
     content = function(file) {
-      if(!is.null(pca_input())){
-        png(file)
-        print(pca_input())
-        dev.off()
+      if(input$show_sampleID){
+        if(!is.null(pca_input_Sample())){
+          png(file)
+          print(pca_input_Sample())
+          dev.off()
+        } 
+      }else{
+        if(!is.null(pca_input_noSample())){
+          png(file)
+          print(pca_input_noSample())
+          dev.off()
+        } 
       }
     }
   )
@@ -384,73 +445,114 @@ shinyServer(function(input,output, session){
   
   observeEvent(input$gsa_btn,{
     if(!is.null(dep())){
-      shinyalert("Start GSA!","Please wait for a while", type="success", timer = 10000,
+      shinyalert("Start GSA!","Please wait for a while", type="info", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
       result_gsa()
-      result_gsa_GOBP()
-      gobp_plot()
-      result_gsa_GOCC()
-      gocc_plot()
-      result_gsa_GOMF()
-      gomf_plot()
-      result_gsa_Kegg()
-      kegg_plot()
-      reverted_kegg()
+      plot_gsa_gobp()
+      plot_gsa_gocc()
+      plot_gsa_gomf()
+      plot_gsa_kegg()
+      reverted_gsa_kegg()
+      shinyalert("Complete GSA!","", type="success", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
     }else{
       shinyalert("Ther is no DEP!", "Change threshold value or threshold type", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
     }
   })
   
-  output$download_gobp <- downloadHandler(
-    filename = function() {paste0("GO_BP_result_", Sys.Date(), ".csv")},
+  output$download_gsa_gobp <- downloadHandler(
+    filename = function() {paste0("GSA_EnrichR_GOBP_result_", Sys.Date(), ".csv")},
     content = function(file) {
-      if(!is.null(result_gsa_GOBP())){
-        write.csv(result_gsa_GOBP(),file,row.names=F,quote=F)
+      if(!is.null(result_gsa_gobp())){
+        write.csv(result_gsa_gobp(),file,row.names=F,quote=F)
       }
     }
   )
   
-  output$download_gocc <- downloadHandler(
-    filename = function() {paste0("GO_CC_result_", Sys.Date(), ".csv")},
+  output$download_gsa_gocc <- downloadHandler(
+    filename = function() {paste0("GSA_EnrichR_GOCC_result_", Sys.Date(), ".csv")},
     content = function(file) {
-      if(!is.null(result_gsa_GOCC())){
-        write.csv(result_gsa_GOCC(),file,row.names=F,quote=F)
+      if(!is.null(result_gsa_gocc())){
+        write.csv(result_gsa_gocc(),file,row.names=F,quote=F)
       }
     }
   )
   
-  output$download_gomf <- downloadHandler(
-    filename = function() {paste0("GO_MF_result_", Sys.Date(), ".csv")},
+  output$download_gsa_gomf <- downloadHandler(
+    filename = function() {paste0("GSA_EnrichR_GOMF_result_", Sys.Date(), ".csv")},
     content = function(file) {
-      if(!is.null(result_gsa_GOMF())){
-        write.csv(result_gsa_GOMF(),file,row.names=F,quote=F)
+      if(!is.null(result_gsa_gomf())){
+        write.csv(result_gsa_gomf(),file,row.names=F,quote=F)
       }
     }
   )
   
-  output$download_kegg <- downloadHandler(
-    filename = function() {paste0("Kegg_result_", Sys.Date(), ".csv")},
+  output$download_gsa_kegg <- downloadHandler(
+    filename = function() {paste0("GSA_EnrichR_Kegg_result_", Sys.Date(), ".csv")},
     content = function(file) {
-      if(!is.null(result_gsa_Kegg())){
-        write.csv(result_gsa_Kegg(),file,row.names=F,quote=F)
+      if(!is.null(result_gsa_kegg())){
+        write.csv(result_gsa_kegg(),file,row.names=F,quote=F)
       }
     }
   )
   
   observeEvent(input$gsea_btn, {
-    if(!is.null(dep())){
-      condition <- make_condition(case_samples(),control_samples())
-      group_name <- unique(condition)
-      
+    if(!is.null(res_test())){
+      shinyalert("Start GSEA!","Please wait for a while", type="info", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+      result_gsea()
+      plot_gsea_gobp()
+      plot_gsea_gocc()
+      plot_gsea_gomf()
+      plot_gsea_kegg()
+      shinyalert("Complete GSEA!","", type="success", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
     } else{
       shinyalert("Ther is no Data!", "Chack your data again", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
     }
   })
   
+  output$download_gsea_gobp <- downloadHandler(
+    filename = function() {paste0("GSEA_GOBP_result_", Sys.Date(), ".csv")},
+    content = function(file) {
+      if(!is.null(result_gsea_gobp())){
+        write.csv(result_gsea_gobp(),file,row.names=F,quote=F)
+      }
+    }
+  )
+  
+  output$download_gsea_gocc <- downloadHandler(
+    filename = function() {paste0("GSEA_GOCC_result_", Sys.Date(), ".csv")},
+    content = function(file) {
+      if(!is.null(result_gsea_gocc())){
+        write.csv(result_gsea_gocc(),file,row.names=F,quote=F)
+      }
+    }
+  )
+  
+  output$download_gsea_gomf <- downloadHandler(
+    filename = function() {paste0("GSEA_GOMF_result_", Sys.Date(), ".csv")},
+    content = function(file) {
+      if(!is.null(result_gsea_gomf())){
+        write.csv(result_gsea_gomf(),file,row.names=F,quote=F)
+      }
+    }
+  )
+  
+  output$download_gsea_kegg <- downloadHandler(
+    filename = function() {paste0("GSEA_Kegg_result_", Sys.Date(), ".csv")},
+    content = function(file) {
+      if(!is.null(result_gsea_kegg())){
+        write.csv(result_gsea_kegg(),file,row.names=F,quote=F)
+      }
+    }
+  )
+  
+  
   observeEvent(input$gsa_btn, {
-    kegg_info <- reverted_kegg()
+    kegg_info <- reverted_gsa_kegg()
     pathway_choices <- kegg_info$Term
     updateSelectInput(session, "pathID_selector",
                       choices = pathway_choices, selected = "")
@@ -538,24 +640,90 @@ shinyServer(function(input,output, session){
     contentType = "image/png"
   )
   
+  observeEvent(input$input_num_toppi,{
+    dep <- rowData(dep())
+    dep <- dep[dep$significant==T,]
+    num <- input$input_num_toppi
+    if(num > nrow(dep)){
+      shinyalert("Input wrong number!","You can input a number between 1 and the number of DEP.", type="error", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
+    }
+  })
+  
+  observeEvent(input$select_ppi_condition, {
+    ppi_condition <- input$select_ppi_condition
+    if(ppi_condition == "Gene_Name"){
+      shinyjs::show("input_gene_toppi")
+      shinyjs::hide("input_num_toppi")
+    }else{
+      shinyjs::hide("input_gene_toppi")
+      shinyjs::show("input_num_toppi")
+    }
+  })
+  
+  observeEvent(input$ppi_btn, {
+    shinyalert("Start PPI Network anlaysis!","please wait for for a while", type="info", timer = 10000,
+               closeOnClickOutside = T, closeOnEsc = T)
+    output$ppi_image <- renderUI(div(
+      tags$img(src=string_url(),
+               id="ppiImage",
+               align="left",
+               style = "position: center;"
+      ))
+    )
+    Sys.sleep(10)
+    shinyalert("Compelte PPI Network anlaysis!","please wait for redering image", type="success", timer = 10000,
+               closeOnClickOutside = T, closeOnEsc = T)
+  })
+    
+  output$ppi_image_download_btn <- downloadHandler(
+    filename = paste0("PPI_network_STRINGDB_", Sys.Date(), ".png"),
+    content = function(file) {
+      GET(string_image_download_url(), write_disk(file))
+    }
+  )
+  
+  output$ppi_tsv_download_btn <- downloadHandler(
+    filename = paste0("PPI_network_STRINGDB_", Sys.Date(), ".tsv"),
+    content = function(file) {
+      GET(string_tsv_download_url(), write_disk(file))
+    }
+  )
+  
+  
+  zoom_values <- reactiveValues(
+    zoom_clicked = 0
+  )
+  
+  observeEvent(input$zoom_pathway_btn,{
+    zoom_values$zoom_clicked <- zoom_values$zoom_clicked + 1
+  })
+  
   
   observeEvent(input$dimension,{
     req(input$zoom_pathway_btn)
-    width <- (input$dimension[1])*0.7
-    height <- (input$dimension[2])*0.7
-    
-    showModal(modalDialog(
-      renderImage({
-        outfile <- pathway_graph()
-        # width <- (session$clientData$output_download_pathview_width)*0.7
-        # height <- (session$clientData$output_download_pathview_height)*0.7
-        
-        list(src=outfile, contentType="image/png",
-             width=width, height=height,
-             alt="Pathview_graph")}, deleteFile=F),
-      easyClose = TRUE,
-      footer=NULL
-    ))
+    if(zoom_values$zoom_clicked==1) {
+      width <- (input$dimension[1])*0.7
+      height <- (input$dimension[2])*0.7
+      
+      showModal(modalDialog(
+        renderImage({
+          outfile <- pathway_graph()
+          # width <- (session$clientData$output_download_pathview_width)*0.7
+          # height <- (session$clientData$output_download_pathview_height)*0.7
+          
+          list(src=outfile, contentType="image/png",
+               width=width, height=height,
+               alt="Pathview_graph")}, deleteFile=F),
+        # easyClose = TRUE,
+        footer=actionButton("close_modal", label="Close")
+      ))
+    }
+  })
+  
+  observeEvent(input$close_modal, {
+    zoom_values$zoom_clicked <- 0
+    removeModal()
   })
   
   
@@ -798,7 +966,15 @@ shinyServer(function(input,output, session){
     } 
     return(data_rejection)
   })
-
+  
+  optimize_k_input <- reactive({
+    assay <- assay(dep())
+    rowData <- rowData(dep())
+    sig_gene <- as.character(rowData$name[rowData$significant==T])
+    best_k = get_optimize_k(assay, sig_gene)
+    print(paste0("best K is ", best_k))
+    return(best_k)
+  })
   
   volcano_input <- reactive({
     condition <- dep()$condition
@@ -818,12 +994,14 @@ shinyServer(function(input,output, session){
   })
   
   pca_input_noSample <- reactive({
+    set.seed(1234)
     n = nrow(assay(dep()))
     plot_pca(dep(), x=1, y=2, n=n, point_size=3, indicate = c("condition"))+
       ggtitle(paste("PCA plot -", n, "variable proteins", sep=" "))
   })
   
   pca_input_Sample <- reactive({
+    set.seed(1234)
     n = nrow(assay(dep()))
     pca_df <- get_pca_df(assay(dep()), colData(dep()), n)
     plot_pca(dep(), x=1, y=2, n=n, point_size=3, indicate = c("condition"))+
@@ -858,7 +1036,7 @@ shinyServer(function(input,output, session){
   })
   
   top_of_kegg <- reactive({
-    kegg_info <- reverted_kegg()
+    kegg_info <- reverted_gsa_kegg()
     top_kegg <- kegg_info[order(kegg_info$Adjusted.P.value, decreasing=F),]
     top_kegg <- head(top_kegg, 10)
     top_kegg <- dplyr::select(top_kegg, -P.value, -matches("Old|Odds|Score"))
@@ -868,7 +1046,7 @@ shinyServer(function(input,output, session){
   
   pathway_graph <- eventReactive(list(input$render_pathway_btn, input$topOfKeggDT_rows_selected),{
     pathway_name <- selected_pathway()
-    kegg_info <- reverted_kegg()
+    kegg_info <- reverted_gsa_kegg()
     rowdt <- rowData(dep())
 
     fc_cols <- colnames(rowdt)[grepl("diff",colnames(rowdt))]
@@ -906,26 +1084,27 @@ shinyServer(function(input,output, session){
   ########################### GSA ######################################
   result_gsa <- reactive({
     data <- rowData(dep())
-    res_gsa <- gsa(data,input$gsa_set,input$gsa_tool)
+    res_gsa <- gsa(data,input$gsa_set)#,input$gsa_tool
     return(res_gsa)
   })
   
-  result_gsa_GOBP <- reactive({
+  result_gsa_gobp <- reactive({
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
-      if(input$gsa_tool == "enrichR"){
+      # if(input$gsa_tool == "enrichR"){
         gobp<-res_gsa[["GO_Biological_Process_2018"]]
-      }
+      # }
     }
     return(gobp)
   })
   
-  gobp_plot <- reactive({
-    gobp <- result_gsa_GOBP()
+ plot_gsa_gobp <- reactive({
+    gobp <- result_gsa_gobp()
     gobp$P.value2 <- -log10(gobp$P.value)
     gobp <- gobp[order(-gobp$P.value2),]
     gobp <- gobp[c(1:input$set_nterm),]
-    output$gobp_plot <- renderPlot({
+    output$gobp_gsa_plot <- renderPlot({
+      Sys.sleep(0.1)
       ggplot(data=gobp, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
         geom_bar(stat = "identity",fill="#3c8dbc")+
         labs(title="GO_BP",x=expression(paste(-log[10],P.value)),y="")+
@@ -934,22 +1113,23 @@ shinyServer(function(input,output, session){
     })
   })
   
-  result_gsa_GOCC <- reactive({
+  result_gsa_gocc <- reactive({
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
-      if(input$gsa_tool == "enrichR"){
+      # if(input$gsa_tool == "enrichR"){
         gocc<-res_gsa[["GO_Cellular_Component_2018"]]
-      }
+      # }
     }
     return(gocc)
   })
   
-  gocc_plot <- reactive({
-    gocc <- result_gsa_GOCC()
+ plot_gsa_gocc <- reactive({
+    gocc <- result_gsa_gocc()
     gocc$P.value2 <- -log10(gocc$P.value)
     gocc <- gocc[order(-gocc$P.value2),]
     gocc <- gocc[c(1:input$set_nterm),]
-    output$gocc_plot <- renderPlot({
+    output$gocc_gsa_plot <- renderPlot({
+      Sys.sleep(0.1)
       ggplot(data=gocc, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
         geom_bar(stat = "identity",fill="#3c8dbc")+
         labs(title="GO_CC",x=expression(paste(-log[10],P.value)),y="")+
@@ -958,22 +1138,23 @@ shinyServer(function(input,output, session){
     })
   })
   
-  result_gsa_GOMF <- reactive({
+  result_gsa_gomf <- reactive({
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
-      if(input$gsa_tool == "enrichR"){
+      # if(input$gsa_tool == "enrichR"){
         gomf<-res_gsa[["GO_Molecular_Function_2018"]]
-      }
+      # }
     }
     return(gomf)
   })
   
-  gomf_plot <- reactive({
-    gomf <- result_gsa_GOMF()
+ plot_gsa_gomf <- reactive({
+    gomf <- result_gsa_gomf()
     gomf$P.value2 <- -log10(gomf$P.value)
     gomf <- gomf[order(-gomf$P.value2),]
     gomf <- gomf[c(1:input$set_nterm),]
-    output$gomf_plot <- renderPlot({
+    output$gomf_gsa_plot <- renderPlot({
+      Sys.sleep(0.1)
       ggplot(data=gomf, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
         geom_bar(stat = "identity",fill="#3c8dbc")+
         labs(title="GO_MF",x=expression(paste(-log[10],P.value)),y="")+
@@ -982,35 +1163,157 @@ shinyServer(function(input,output, session){
     })
   })
   
-  result_gsa_Kegg <- reactive({
+  result_gsa_kegg <- reactive({
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
-      if(input$gsa_tool == "enrichR"){
+      # if(input$gsa_tool == "enrichR"){
         kegg<-res_gsa[["KEGG_2019_Human"]]
-      }
+      # }
     }
     return(kegg)
   })
   
-  reverted_kegg <- reactive({
-    kegg <- result_gsa_Kegg()
+  reverted_gsa_kegg <- reactive({
+    kegg <- result_gsa_kegg()
     kegg <- changePathwayID(kegg)
     return(kegg)
   })
   
   
-  kegg_plot <- reactive({
-    kegg <- result_gsa_Kegg()
+ plot_gsa_kegg <- reactive({
+    kegg <- result_gsa_kegg()
     kegg$P.value2 <- -log10(kegg$P.value)
     kegg <- kegg[order(-kegg$P.value2),]
     kegg <- kegg[c(1:input$set_nterm),]
-    output$kegg_plot <- renderPlot({
+    output$kegg_gsa_plot <- renderPlot({
+      Sys.sleep(0.1)
       ggplot(data=kegg, aes(x=`P.value2`,y=reorder(`Term`,`P.value2`)))+
         geom_bar(stat = "identity",fill="#3c8dbc")+
         labs(title="KEGG",x=expression(paste(-log[10],P.value)),y="")+
         theme_bw()+
         theme(axis.text=element_text(size=12),title = element_text(size=15,face="bold"))
     })
+  })
+  
+ ########################### GSEA ######################################
+  result_gsea <- reactive({
+    rowdata <- rowData(dep())
+    res_gsea <- gsea(rowdata, input$select_genelevel_stats)
+    return(res_gsea)
+  })
+  
+ result_gsea_gobp <- reactive({
+    res_gsea <- result_gsea()
+    res_gobp <- res_gsea$result_GO_BP
+    temp <- mapply(function(x){unlist(x)},res_gobp$leadingEdge)
+    temp <- mapply(function(x){paste(x,collapse = ";")},temp)
+    res_gobp$leadingEdge <- temp
+    remove(temp)
+    return(res_gobp)
+  })
+  
+  plot_gsea_gobp <- reactive({
+    res_gsea <- result_gsea()
+    plot_gobp <- res_gsea$plot_GO_BP
+    output$gobp_gsea_plot <- renderPlot(plot_gobp)
+  })
+  
+  result_gsea_gocc <- reactive({
+    res_gsea <- result_gsea()
+    res_gocc <- res_gsea$result_GO_CC
+    temp <- mapply(function(x){unlist(x)},res_gocc$leadingEdge)
+    temp <- mapply(function(x){paste(x,collapse = ";")},temp)
+    res_gocc$leadingEdge <- temp
+    remove(temp)
+    return(res_gocc)
+  })
+
+  plot_gsea_gocc <- reactive({
+    res_gsea <- result_gsea()
+    plot_gocc <- res_gsea$plot_GO_CC
+    output$gocc_gsea_plot <- renderPlot(plot_gocc)
+  })
+  
+  result_gsea_gomf <- reactive({
+    res_gsea <- result_gsea()
+    res_gomf <- res_gsea$result_GO_MF
+    temp <- mapply(function(x){unlist(x)},res_gomf$leadingEdge)
+    temp <- mapply(function(x){paste(x,collapse = ";")},temp)
+    res_gomf$leadingEdge <- temp
+    remove(temp)
+    return(res_gomf)
+  })
+  
+  plot_gsea_gomf <- reactive({
+    res_gsea <- result_gsea()
+    plot_gomf <- res_gsea$plot_GO_MF
+    output$gomf_gsea_plot <- renderPlot(plot_gomf)
+  })
+  
+  result_gsea_kegg <- reactive({
+    res_gsea <- result_gsea()
+    res_kegg<- res_gsea$result_Kegg
+    temp <- mapply(function(x){unlist(x)},res_kegg$leadingEdge)
+    temp <- mapply(function(x){paste(x,collapse = ";")},temp)
+    res_kegg$leadingEdge <- temp
+    remove(temp)
+    return(res_kegg)
+  })
+  
+  plot_gsea_kegg <- reactive({
+    res_gsea <- result_gsea()
+    plot_kegg <- res_gsea$plot_Kegg
+    output$kegg_gsea_plot <- renderPlot(plot_kegg)
+  })
+  
+  ########################### PPI network ######################################
+  
+  get_input_gene_toppi <- reactive({
+    data <- rowData(dep())
+    data <- data[data$significant==T,]
+    gene <- as.character(data$name)
+    fc <- abs(data[,grep("diff",colnames(data))])
+    pval <- data[,grep("p.val",colnames(data))]
+    qval <- data[,grep("p.adj",colnames(data))]
+    dep <- data.frame(gene,fc,pval,qval)
+    
+    ppi_condition <- input$select_ppi_condition
+    if(ppi_condition == "P.adj"){
+      dep <- dep[order(dep$qval),]  
+      gene <- as.character(dep$gene[c(1:input$input_num_toppi)])
+    } else if (ppi_condition == "P.val"){
+      dep <- dep[order(dep$pval),]
+      gene <- as.character(dep$gene[c(1:input$input_num_toppi)])
+    } else if (ppi_condition == "log2FC") {
+      dep <- dep[order(-dep$fc),]
+      gene <- as.character(dep$gene[c(1:input$input_num_toppi)])
+    } else{
+      gene <- input$input_gene_toppi
+      print(gene)
+      gene <- gsub(" ","",gene, fixed=T)
+      gene <- as.character(do.call('rbind', strsplit(as.character(gene), split = ',', fixed = TRUE)))
+      print(gene)
+    }
+
+    return(gene)
+  })
+  
+  string_url <- reactive({
+    input_gene <- get_input_gene_toppi()
+    URL <- string_url_builder(input$input_organism_toppi,input_gene)
+    return(URL)
+  })
+  
+  string_image_download_url <- reactive({
+    input_gene <- get_input_gene_toppi()
+    URL <- string_image_download_url_builder(input$input_organism_toppi,input_gene)
+    return(URL)
+  })
+  
+  string_tsv_download_url <- reactive({
+    input_gene <- get_input_gene_toppi()
+    URL <- string_tsv_download_url_builder(input$input_organism_toppi,input_gene)
+    return(URL)
   })
   
   addTimeLine <-  function(timeLine){

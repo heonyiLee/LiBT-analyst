@@ -7,7 +7,8 @@ library(shinyalert)
 library(shinycssloaders)
 library(shinyjqui)
 library(sortable)
-
+library(V8)
+library(httr)
 
 
 ui <- function(request) {shinyUI(
@@ -37,6 +38,8 @@ ui <- function(request) {shinyUI(
         tabItem(
           tabName = "analysis",
           fluidRow(
+            hidden(downloadButton("download_exp_btn","Save Expression Data", "download_exp_btn")),
+            hidden(downloadButton("download_dep_info_btn","Save DEP info Data","download_dep_info_btn")),
             box(
               id="data_table",
               solidHeader = T,
@@ -91,39 +94,37 @@ ui <- function(request) {shinyUI(
               tabPanel("Results of GSA",
                        fluidRow(
                          box(
-                           id = "gobp_box",
+                           id = "gobp_gsa_box",
                            solidHeader = T,
-                           width = 6,
-                           withSpinner(plotOutput("gobp_plot")),
-                           downloadButton("download_gobp", "Save_GOBP")
+                           width = 12,
+                           withSpinner(plotOutput("gobp_gsa_plot")),
+                           downloadButton("download_gsa_gobp", "Save_GSA_GOBP_all")
                          ),
                          box(
-                           id = "gocc_box",
+                           id = "gocc_gsa_box",
                            solidHeader = T,
-                           width = 6,
-                           withSpinner(plotOutput("gocc_plot")),
-                           downloadButton("download_gocc", "Save_GOCC")
+                           width = 12,
+                           withSpinner(plotOutput("gocc_gsa_plot")),
+                           downloadButton("download_gsa_gocc", "Save_GSA_GOCC_all")
                          ),
                          box(
-                           id = "gomf_box",
+                           id = "gomf_gsa_box",
                            solidHeader = T,
-                           width = 6,
-                           withSpinner(plotOutput("gomf_plot")),
-                           downloadButton("download_gomf", "Save_GOMF")
+                           width = 12,
+                           withSpinner(plotOutput("gomf_gsa_plot")),
+                           downloadButton("download_gsa_gomf", "Save_GSA_GOMF_all")
                          ),
                          box(
-                           id = "kegg_box",
+                           id = "kegg_gsa_box",
                            solidHeader = T,
-                           width = 6,
-                           withSpinner(plotOutput("kegg_plot")),
-                           downloadButton("download_kegg", "Save_Kegg")
+                           width = 12,
+                           withSpinner(plotOutput("kegg_gsa_plot")),
+                           downloadButton("download_gsa_kegg", "Save_GSA_Kegg_all")
                          )
                          ,useShinyalert()
                        )
               ),#tab2 end
-              tabPanel("Results of GSEA",
-              ),#End of GSEA
-              tabPanel("Results of Pathview",
+              tabPanel("Results of GSA Pathview",
                        fluidRow(
                          box(
                            title="Top 10 of KEGG pathway",
@@ -151,7 +152,64 @@ ui <- function(request) {shinyUI(
                          )
                          ,useShinyalert()
                        )
-              )#tab3 end
+              ),#tab3 end
+              tabPanel("Results of GSEA",
+                       fluidRow(
+                         box(
+                           id = "gobp_gsea_box",
+                           solidHeader = T,
+                           width = 12,
+                           withSpinner(plotOutput("gobp_gsea_plot")),
+                           downloadButton("download_gsea_gobp", "Save_GSEA_GOBP")
+                         ),
+                         box(
+                           id = "gocc_gsea_box",
+                           solidHeader = T,
+                           width = 12,
+                           withSpinner(plotOutput("gocc_gsea_plot")),
+                           downloadButton("download_gsea_gocc", "Save_GSEA_GOCC")
+                         ),
+                         box(
+                           id = "gomf_gsea_box",
+                           solidHeader = T,
+                           width = 12,
+                           withSpinner(plotOutput("gomf_gsea_plot")),
+                           downloadButton("download_gsea_gomf", "Save_GSEA_GOMF")
+                         ),
+                         box(
+                           id = "kegg_gsea_box",
+                           solidHeader = T,
+                           width = 12,
+                           withSpinner(plotOutput("kegg_gsea_plot")),
+                           downloadButton("download_gsea_kegg", "Save_GSEA_Kegg")
+                         )
+                         ,useShinyalert()
+                       )
+              ),#End of GSEA
+              tabPanel("Results of GSEA Pathview",
+                fluidRow(
+                  box(
+                    id = "gsea_pathview_box",
+                    solidHeader = T,
+                    width = 12,
+                  )
+                  ,useShinyalert()
+                )
+              ),
+              tabPanel("Result of PPI Network Analysis",
+                 fluidRow(
+                   box(
+                     id = "ppi_box",
+                     solidHeader = T,
+                     width = 12,
+                     downloadButton("ppi_image_download_btn", "Download PPI Network PNG"),
+                     downloadButton("ppi_tsv_download_btn", "Download PPI Network tsv"),
+                     withSpinner(uiOutput("ppi_image"))
+                     #uiOutput("ppi_image")
+                   )
+                   ,useShinyalert()
+                 )
+              )
             )#End of tabBox
           )#End of fluidRow
         ),#End of tabItem_analysis
@@ -300,10 +358,9 @@ ui <- function(request) {shinyUI(
                          choices = list("P.adj" = "P.adj", "P.value" = "P.value", "None" = "none")),
             numericInput("dea_pvalue", label = HTML("Set the threshold <br/>for the adjusted P-value or P-value"),
                          value=0.05),
-            numericInput("dea_log2fc", label = HTML("Set the threshold <br/>for the log2 fold change"),
+            numericInput("dea_log2fc", label = HTML("Set the threshold <br/>for the log<sub>2</sub> Fold Change"),
                          value=1.5),
-            numericInput("dea_clusterNum", label = HTML("Set a number of cluster <br/>for heatmap"),
-                         value=3),
+            numericInput("dea_clusterNum", label = HTML("Set a number of cluster <br/>for heatmap"), value=1),
             tags$hr(),
             actionButton("dea_btn", "Start Draw")
           )
@@ -325,8 +382,8 @@ ui <- function(request) {shinyUI(
             uiOutput("dep_down"),
             radioButtons("gsa_set", label="Choose Data set",
                          choices = list("Case-UP" = "caseup", "Ctrl-UP" = "casedown")),
-            radioButtons("gsa_tool", label="Choose GSA Tool", 
-                         choices = list("enrichR" = "enrichR", "DAVID" = "DAVID")),
+            # radioButtons("gsa_tool", label="Choose GSA Tool", 
+            #              choices = list("enrichR" = "enrichR", "DAVID" = "DAVID")),
             numericInput("set_nterm", label = HTML("Set a number of showed Term <br/>for barplot"),
                          value=10),
             actionButton("gsa_btn", "Start GSA")
@@ -340,12 +397,82 @@ ui <- function(request) {shinyUI(
           boxToolSize = "md",
           closable = F,
           footer = fluidRow(
+            tags$div(
+              id="select_genelevel_stats", class="form-group shiny-input-radiogroup shiny-input-container",
+              tags$label(class="control-label", `for`="select_genelevel_stats", "Distribution type:"),
+              tags$div(class="shiny-options-group",
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="select_genelevel_stats", value="log2fcxmlog10padj", checked="checked",
+                                             tags$span(HTML("log<sub>2</sub>FC*-log<sub>10</sub>(P.adj)")))
+                                )
+                       ),
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="select_genelevel_stats", value="P.adj",
+                                             tags$span(HTML("P.adj")))
+                                )
+                       ),
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="select_genelevel_stats", value="P.value",
+                                             tags$span(HTML("P.value")))
+                                )
+                       ),
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="select_genelevel_stats", value="log2fc",
+                                             tags$span(HTML("log<sub>2</sub>FoldChange")))
+                                )
+                       )
+              )
+            ),
             actionButton("gsea_btn", "Start GSEA")
           )
-        ) # End of DEP box
+        ), # End of GSEA box
+        gradientBox(
+          title = HTML("Protein-Protein Interaction <br/>Network Analysis <br/><br/>"),
+          width = 12,
+          icon = "chart-pie",
+          gradientColor = "yellow",
+          boxToolSize = "md",
+          closable = F,
+          footer = fluidRow(
+            pickerInput("input_organism_toppi", label=HTML("Choose organism"), choices = c("Homo Sapiens", "Mus musculus")),
+            numericInput("input_num_toppi", label = HTML("Choose number of input gene <br/> (Defualt : # of DEP)"),value=100),
+            tags$div(
+              id="select_ppi_condition", class="form-group shiny-input-radiogroup shiny-input-container",
+              tags$label(class="control-label", `for`="select_ppi_condition", "Distribution type:"),
+              tags$div(class="shiny-options-group",
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="select_ppi_condition", value="P.adj",
+                                             tags$span(HTML("P.adj")))
+                                )
+                       ),
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="select_ppi_condition", value="P.value",
+                                             tags$span(HTML("P.value")))
+                                )
+                       ),
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="select_ppi_condition", value="log2fc",
+                                             tags$span(HTML("log<sub>2</sub>FoldChange")))
+                                )
+                       )
+              )
+            ),
+            hidden(textInput("input_gene_toppi", "Input gene name", placeholder = "Ex)TP53 or TP53, PLK1, RHOB")),
+            actionButton("ppi_btn", "Start PPIA")
+          )
+        ) # End of STRING box
       )
     ), # End of rightSidebar
     title = "LiBT-Analyst",
     useShinyjs()
   ))
 }
+
+
