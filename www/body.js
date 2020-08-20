@@ -11,6 +11,12 @@ $(document).ready(function(){
       $("#uploaded_file_header").attr('style','visibility:hidden');
     }
   });
+  
+  $(".btn-file").click(function(){
+    if(data_table != "hide"){
+      $("#uploaded_file_header").attr('style','visibility:hidden');
+    }
+  });
 
   $("#gobp_gsa_box .load-container").hide();
   $("#gocc_gsa_box .load-container").hide();

@@ -445,7 +445,7 @@ ui <- function(request) {shinyUI(
               tags$div(class="shiny-options-group",
                        tags$div(class="radio",
                                 tags$label(
-                                  tags$input(type="radio", name="select_ppi_condition", value="P.adj",
+                                  tags$input(type="radio", name="select_ppi_condition", value="P.adj", checked="checked",
                                              tags$span(HTML("P.adj")))
                                 )
                        ),
