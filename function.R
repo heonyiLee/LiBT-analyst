@@ -93,7 +93,7 @@ get_main_data_LiB <- function(data, file_type) {
         pt_db <- pt_nrv
         pt_db <- pt_db[!duplicated(pt_db$Entry),]
       }else{
-        data_pos <- grep(ProteinID_multi[i],data$Majority.protein.IDs)
+        data_pos <- which(data$Majority.protein.IDs==ProteinID_multi[i])
         pt_db <- data.frame(Entry=data$Majority.protein.IDs[data_pos],Gene.symbol=data$Gene.names[data_pos])
       }
     }
@@ -118,6 +118,42 @@ get_main_data_LiB <- function(data, file_type) {
   
   ProteinID[multi_pos] <- as.character(pt_multi$ProteinID)
   GeneName[multi_pos] <- as.character(pt_multi$GeneName)
+  
+  ProteinID_solo <- ProteinID[-multi_pos]
+  for(i in 1:length(ProteinID_solo)){
+    solo_pos <- which(data$Majority.protein.IDs==ProteinID_solo[i])
+    pt <- data.frame(Entry=ProteinID_solo[i])
+    pt_db <- merge(pt,rv_db,by="Entry")
+    if(nrow(pt_db)!=0){
+      pt_db <- pt_db[!duplicated(pt_db$Entry),]
+    }else{
+      pt_nrv <- merge(pt,nrv_db,by="Entry")
+      if(nrow(pt_nrv) != 0){
+        pt_db <- pt_nrv
+        pt_db <- pt_db[!duplicated(pt_db$Entry),]
+      }else{
+        pt_db <- data.frame(Entry=data$Majority.protein.IDs[solo_pos],Gene.symbol=data$Gene.names[solo_pos])
+      }
+    }
+    
+    id <- c()
+    gn <- c()
+    if(nrow(pt_db)>1){
+      for(j in 1:nrow(pt_db)){
+        id <- paste0(id,";",pt_db$Entry[j])
+        gn <- paste0(gn,";",pt_db$Gene.symbol[j])
+      }
+      pt_id <- gsub("^;","",id)
+      pt_gn <- gsub("^;","",gn)
+      pt_solo <- data.frame(ProteinID=pt_id,GeneName=pt_gn)
+    } else{
+      pt_gn <- pt_db$Gene.symbol
+      pt_solo <- data.frame(ProteinID=pt_db$Entry,GeneName=pt_gn)
+    }
+    
+    ProteinID[solo_pos] <- as.character(pt_solo$ProteinID)
+    GeneName[solo_pos] <- as.character(pt_solo$GeneName)
+  }
   
   cn_data <- colnames(data)
   
@@ -147,6 +183,11 @@ get_main_data_LiB <- function(data, file_type) {
   
   isDup_name <- data$name %>% duplicated() %>% any()
   if(isDup_name == F){
+    for(i in 1:nrow(data_unique)){
+      if(is.na(data_unique$GeneName[i])){
+        data_unique$name[i] <- paste0(data_unique$ID[i],"|?")
+      }
+    }
     data_unique <- data.frame(ID=data_unique$ID,name=data_unique$name,data_unique[,-c(1:2,(ncol(data_unique)-1):ncol(data_unique))])
     return(data_unique)
   }
@@ -191,7 +232,7 @@ get_main_data_T <- function(data,normalization) {
     main_data <- main_data[,main_pos]
   }
   
-  main_data <- na.omit(main_data)
+  #main_data <- na.omit(main_data)
   
   acc <- main_data$Accession
   id_pos <- grep("-",acc)
@@ -236,6 +277,11 @@ get_main_data_T <- function(data,normalization) {
   
   isDup_name <- data$name %>% duplicated() %>% any()
   if(isDup_name==F){
+    for(i in 1:nrow(data_unique)){
+      if(is.na(data_unique$Gene.symbol[i])){
+        data_unique$name[i] <- paste0(data_unique$ID[i],"|?")
+      }
+    }
     data_unique <- data.frame(ID=data_unique$ID,name=data_unique$name,data_unique[,-c(1:2,(ncol(data_unique)-1):ncol(data_unique))])
     return(data_unique)
   } 
@@ -541,7 +587,7 @@ get_optimize_k <- function(assay, sig_gene){
   #     i <- i+1
   #   }
   # }
-
+  
   return(best_k)
 }
 
@@ -709,7 +755,7 @@ gsa_changePathwayID <- function(kegg) {
 
 gsea_changePathwayID <- function(kegg) {
   lines <- readLines(
-    "http://www.kegg.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext" )
+    "http://www.kegg.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext")
   pathways <- do.call(
     rbind,
     str_split( grep( "^[ABCD]\\s+\\d{5}\\s+.*?$", lines, value=TRUE ), "\\s{2,}" )
@@ -792,19 +838,3 @@ string_tsv_download_url_builder <- function(organism, gene){
                 "&species=",input_organism)
   return(URL)
 }
-
-# library(org.Hs.eg.db)
-# mapped <- mappedkeys(org.Hs.egPATH2EG)
-# L <- as.list(org.Hs.egPATH2EG[mapped])
-# Kegg_ID <- names(L)
-
-
-# see_pathview <- function(..., save_image = FALSE)
-# {
-#   msg <- capture.output(pathview::pathview(...), type = "message")
-#   msg <- grep("image file", msg, value = T)
-#   filename <- sapply(strsplit(msg, " "), function(x) x[length(x)])
-#   img <- png::readPNG(filename)
-#   grid::grid.raster(img)
-#   if(!save_image) invisible(file.remove(filename))
-# }

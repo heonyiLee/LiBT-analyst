@@ -12,8 +12,6 @@ library(tibble)
 library(gage)
 library(fgsea)
 library(pathview)
-library(V8)
-library(httr)
 library(zip)
 
 
@@ -57,7 +55,7 @@ shinyServer(function(input,output, session){
                  closeOnClickOutside = T, closeOnEsc = T)
       reset("fileBrowser")
     } else {
-      shinyalert("Data will be converted to log2 scale in the following order!", type = "info")
+      
       if(input$file_type=="TMT"){
         state <- colnames(temp)[grep("normalized", colnames(temp), ignore.case = T)]
         updateRadioButtons(session, "TMT_input_option", label="Get Normalized TMT data",
@@ -105,6 +103,7 @@ shinyServer(function(input,output, session){
       shinyalert("Choose option!", type="error", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
     } else {
+      shinyalert("Data will be converted to log2 scale in the following order!", type = "info")
       render_df <- main_data()
       output$uploaded_file_header <- DT::renderDataTable({
         Sys.sleep(2)
@@ -128,7 +127,7 @@ shinyServer(function(input,output, session){
           newTL <- data.frame(step="Data Input",info=info,
                               sample_num=as.numeric(nrow(render_df)),
                               time=as.character(Sys.time()),color="maroon",icon="file-upload")
-        
+          
           if(nrow(timeLine)!=2){
             timeLine <<- rbind(timeLine,newTL)
           } else{
@@ -193,8 +192,9 @@ shinyServer(function(input,output, session){
       # res <- round(assay(data_se),digits=2)
       res <- assay(data_se)
       output$uploaded_file_header <- DT::renderDataTable({
-        DT::datatable(res,options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15))) %>% DT::formatRound(colnames(res), digits=2)
-      }) 
+        DT::datatable(res,options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)), selection="none") %>% 
+          DT::formatRound(colnames(res), digits=2)
+      }, server=F) 
       
       tmp <- c()
       preprocessing_options <- input$use_options
@@ -350,7 +350,7 @@ shinyServer(function(input,output, session){
     
     data_results()
     shinyjs::show("download_dep_info_btn")
-  
+    
     if(input$thres_type == "none"){
       info <- paste0("* Threshold type : ", input$thres_type,"\n",
                      "* The number of cluster : ", input$dea_clusterNum)
@@ -532,14 +532,14 @@ shinyServer(function(input,output, session){
       showModal(modalDialog(
         title=input$pathID_selector,
         size=c("l"),
-       renderImage({
-            outfile <- pathway_graph()
-
-            list(src=outfile, contentType="image/png+xml",
-                 width="100%",height="100%",
-                 alt="Pathview_graph")}, deleteFile=F),
-       footer=NULL,
-       easyClose=TRUE
+        renderImage({
+          outfile <- pathway_graph()
+          
+          list(src=outfile, contentType="image/png+xml",
+               width="100%",height="100%",
+               alt="Pathview_graph")}, deleteFile=F),
+        footer=NULL,
+        easyClose=TRUE
       ))
       # output$pathview_result <- renderImage({
       #   outfile <- pathway_graph()
@@ -560,7 +560,7 @@ shinyServer(function(input,output, session){
     }
     pathway_name <- selected_pathway()
     
-    fc <- rowdt$Total_B_vs_Total_M_diff
+    fc <- rowdt[,grep('diff',colnames(rowdt))]
     names(fc) <- rowdt$name
     
     pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
@@ -688,10 +688,111 @@ shinyServer(function(input,output, session){
            alt=pathway_name)}, deleteFile=F
     )
   });
-
+  
   output$download_gsea_pathview <- downloadHandler(
     filename = function() {
       paste0(gsea_pathview_dir,".zip")},
+    content = function(file) {
+      dir <- getwd()
+      dir <- strsplit(dir,"/",fixed = T)
+      dir <- as.character(unlist(dir))
+      dir <- dir[length(dir)]
+      if(dir == gsea_pathview_dir){
+        setwd("../")
+      }
+      png_list <- list.files(path=gsea_pathview_dir, pattern=".png")
+      file_set <- c()
+      for(i in 1:length(png_list)){
+        file_path <- paste0("./",gsea_pathview_dir,"/",png_list[i])  
+        file_set <- c(file_set, file_path)
+      }
+      zip(file,file_set)
+    }
+  )
+  
+  observeEvent(input$gsa_btn, {
+    kegg_info <- reverted_gsa_kegg()
+    pathway_choices <- kegg_info$Term
+    updateSelectInput(session, "pathID_selector",
+                      choices = pathway_choices, selected = "")
+    
+    output$topOfKeggDT <- DT::renderDataTable({
+      DT::datatable(top_of_kegg(), options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)),
+                    selection ="single") 
+    }, server=T)
+  })
+  
+  
+  
+  
+  
+  # observeEvent(input$pathID_selector,{
+  #   if(!is.null(input$topOfKeggDT_rows_selected)){
+  #     dtProxy = DT::dataTableProxy("topOfKeggDT", session=session)
+  #     DT::reloadData(dtProxy, clearSelection=c("all"))
+  #     
+  #     if(input$pathID_selector != ""){
+  #       output$pathview_result <- renderImage({
+  #         outfile <- pathway_graph()
+  #         
+  #         list(src=outfile, contentType="image/png",
+  #              width="100%", height="100%",
+  #              alt="Pathview_graph")}, deleteFile=F)
+  #       
+  #     }
+  #   }
+  # })
+  # 
+  # 
+  # observeEvent(input$topOfKeggDT_rows_selected, {
+  #   if(!is.null(input$topOfKeggDT_rows_selected)){
+  #     output$pathview_result <- renderImage({
+  #       outfile <- pathway_graph()
+  #       list(src=outfile, contentType="image/png",
+  #            width="100%", height="100%",
+  #            alt="Pathview_graph")}, deleteFile=F)
+  #   }
+  # })
+  
+  observeEvent(input$pathID_selector, {
+    if(!is.null(input$topOfKeggDT_rows_selected)){
+      dtProxy = DT::dataTableProxy("topOfKeggDT", session=session)
+      DT::reloadData(dtProxy, clearSelection=c("all"))
+    }
+  })
+  
+  observeEvent(input$render_pathway_btn,{
+    if(input$pathID_selector != "") {
+      outfile <- pathway_graph()
+      
+      output$pathview_result <- renderImage({
+        list(src=outfile, contentType="image/png",
+             width="100%", height="100%",
+             alt="Pathview_graph")}, deleteFile=F)
+    } 
+  })
+  
+  observeEvent(input$topOfKeggDT_rows_selected, {
+    if(input$pathID_selector!=""){
+      req(input$pathID_selector)
+      updateSelectInput(session, "pathID_selector",
+                        selected = "")
+      dtProxy = DT::dataTableProxy("topOfKeggDT", session=session)
+      DT::selectRows(dtProxy, selected=input$topOfKeggDT_rows_selected)
+    }
+    
+    outfile <- pathway_graph()
+    
+    output$pathview_result <- renderImage({
+      list(src=outfile, contentType="image/png",
+           width="100%", height="100%",
+           alt="Pathview_graph")}, deleteFile=F)
+  })
+  
+  output$download_pathview <- downloadHandler(
+    filename = function() {
+      paste0("Pathview_", pathway_graph())},
+    # paste0("Pathview_", selected_pathway(), ".png")},
     content = function(file) {
       dir <- getwd()
       dir <- strsplit(dir,"/",fixed = T)
@@ -745,7 +846,7 @@ shinyServer(function(input,output, session){
     shinyalert("Compelte PPI Network anlaysis!","please wait for redering image", type="success", timer = 10000,
                closeOnClickOutside = T, closeOnEsc = T)
   })
-    
+  
   output$ppi_image_download_btn <- downloadHandler(
     filename = paste0("PPI_network_STRINGDB_", Sys.Date(), ".png"),
     content = function(file) {
@@ -759,6 +860,46 @@ shinyServer(function(input,output, session){
       GET(string_tsv_download_url(), write_disk(file))
     }
   )
+  
+  
+  zoom_values <- reactiveValues(
+    zoom_clicked = 0
+  )
+  
+  observeEvent(input$zoom_pathway_btn,{
+    zoom_values$zoom_clicked <- zoom_values$zoom_clicked + 1
+  })
+  
+  
+  observeEvent(input$dimension,{
+    req(input$zoom_pathway_btn)
+    if(zoom_values$zoom_clicked==1) {
+      width <- (input$dimension[1])*0.7
+      height <- (input$dimension[2])*0.7
+      
+      showModal(modalDialog(
+        renderImage({
+          outfile <- pathway_graph()
+          # width <- (session$clientData$output_download_pathview_width)*0.7
+          # height <- (session$clientData$output_download_pathview_height)*0.7
+          
+          list(src=outfile, contentType="image/png",
+               width=width, height=height,
+               alt="Pathview_graph")}, deleteFile=F),
+        # easyClose = TRUE,
+        footer=actionButton("close_modal", label="Close")
+      ))
+    }
+  })
+  
+  observeEvent(input$close_modal, {
+    zoom_values$zoom_clicked <- 0
+    removeModal()
+  })
+  
+  
+  
+  
   
   ##--------------------------------------------------- reactive/EventReactive Section
   file_input <- reactive({NULL})
@@ -1034,7 +1175,7 @@ shinyServer(function(input,output, session){
     case_name <- condition[1]
     ctrl_name <- condition[length(condition)]
     contrast <- paste0(case_name,"_vs_", ctrl_name)
-
+    
     dep_rowData <- rowData(dep())
     pv_pos <- grep("p.val",colnames(dep_rowData),fixed = T)
     lfc_pos <- grep("diff",colnames(dep_rowData),fixed = T)
@@ -1082,9 +1223,44 @@ shinyServer(function(input,output, session){
     data_results <- get_results(dep())
   })
   
+  
+  
   selected_pathway <- reactive({
-    selected_pathway <- input$pathID_selector
+    if(!is.null(input$topOfKeggDT_rows_selected)){
+      kegg_info <- top_of_kegg()
+      selected_pathway <- kegg_info[input$topOfKeggDT_rows_selected, 1]
+    } else if(input$pathID_selector !="") {
+      selected_pathway <- input$pathID_selector  
+    } 
     return(selected_pathway)
+  })
+  
+  top_of_kegg <- reactive({
+    kegg_info <- reverted_gsa_kegg()
+    top_kegg <- kegg_info[order(kegg_info$Adjusted.P.value, decreasing=F),]
+    top_kegg <- head(top_kegg, 10)
+    top_kegg <- dplyr::select(top_kegg, -P.value, -matches("Old|Odds|Score"))
+    return(top_kegg)
+  })
+  
+  
+  pathway_graph <- eventReactive(list(input$render_pathway_btn, input$topOfKeggDT_rows_selected),{
+    pathway_name <- selected_pathway()
+    kegg_info <- reverted_gsa_kegg()
+    rowdt <- rowData(dep())
+    
+    fc_cols <- colnames(rowdt)[grepl("diff",colnames(rowdt))]
+    fc <- rowdt[,fc_cols]
+    names(fc) <- rowdt$name
+    
+    pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
+    
+    outfile <- paste0("hsa", pathid,".pathview.png")
+    
+    pathview(fc, pathway.id=pathid, gene.idtype="SYMBOL", species = "hsa",
+             kegg.dir="./PATHVIEW/")
+    
+    return(outfile)
   })
   
   
@@ -1101,7 +1277,8 @@ shinyServer(function(input,output, session){
     # input_vc <- input_vc %>% filter(input_vc, sig)
     df <- brushedPoints(input_vc, input$volcano_brush, xvar="log<sub>2</sub>FC", yvar = "-log<sub>10</sub>P.value")
     # return(df)
-  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)), escape = F) %>%  DT::formatRound(c(2:3),digits=2))
+  }, options = list(scrollX = TRUE, pageLength = 5,lengthMenu = c(5, 10, 15)), escape = F, selection="none") %>%  DT::formatRound(c(2:3),digits=2))
+  
   
   
   ########################### GSA ######################################
@@ -1115,13 +1292,13 @@ shinyServer(function(input,output, session){
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
       # if(input$gsa_tool == "enrichR"){
-        gobp<-res_gsa[["GO_Biological_Process_2018"]]
+      gobp<-res_gsa[["GO_Biological_Process_2018"]]
       # }
     }
     return(gobp)
   })
   
- plot_gsa_gobp <- reactive({
+  plot_gsa_gobp <- reactive({
     gobp <- result_gsa_gobp()
     gobp$P.value2 <- -log10(gobp$P.value)
     gobp <- gobp[order(-gobp$P.value2),]
@@ -1140,13 +1317,13 @@ shinyServer(function(input,output, session){
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
       # if(input$gsa_tool == "enrichR"){
-        gocc<-res_gsa[["GO_Cellular_Component_2018"]]
+      gocc<-res_gsa[["GO_Cellular_Component_2018"]]
       # }
     }
     return(gocc)
   })
   
- plot_gsa_gocc <- reactive({
+  plot_gsa_gocc <- reactive({
     gocc <- result_gsa_gocc()
     gocc$P.value2 <- -log10(gocc$P.value)
     gocc <- gocc[order(-gocc$P.value2),]
@@ -1165,13 +1342,13 @@ shinyServer(function(input,output, session){
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
       # if(input$gsa_tool == "enrichR"){
-        gomf<-res_gsa[["GO_Molecular_Function_2018"]]
+      gomf<-res_gsa[["GO_Molecular_Function_2018"]]
       # }
     }
     return(gomf)
   })
   
- plot_gsa_gomf <- reactive({
+  plot_gsa_gomf <- reactive({
     gomf <- result_gsa_gomf()
     gomf$P.value2 <- -log10(gomf$P.value)
     gomf <- gomf[order(-gomf$P.value2),]
@@ -1190,7 +1367,7 @@ shinyServer(function(input,output, session){
     res_gsa <- result_gsa()
     if(!is.null(res_gsa)){
       # if(input$gsa_tool == "enrichR"){
-        kegg<-res_gsa[["KEGG_2019_Human"]]
+      kegg<-res_gsa[["KEGG_2019_Human"]]
       # }
     }
     return(kegg)
@@ -1203,7 +1380,7 @@ shinyServer(function(input,output, session){
   })
   
   
- plot_gsa_kegg <- reactive({
+  plot_gsa_kegg <- reactive({
     kegg <- result_gsa_kegg()
     kegg$P.value2 <- -log10(kegg$P.value)
     kegg <- kegg[order(-kegg$P.value2),]
@@ -1218,14 +1395,14 @@ shinyServer(function(input,output, session){
     })
   })
   
- ########################### GSEA ######################################
+  ########################### GSEA ######################################
   result_gsea <- reactive({
     rowdata <- rowData(res_test())
     res_gsea <- gsea(rowdata, input$select_genelevel_stats)
     return(res_gsea)
   })
   
- result_gsea_gobp <- reactive({
+  result_gsea_gobp <- reactive({
     res_gsea <- result_gsea()
     res_gobp <- res_gsea$result_GO_BP
     temp <- mapply(function(x){unlist(x)},res_gobp$leadingEdge)
@@ -1250,7 +1427,7 @@ shinyServer(function(input,output, session){
     remove(temp)
     return(res_gocc)
   })
-
+  
   plot_gsea_gocc <- reactive({
     res_gsea <- result_gsea()
     plot_gocc <- res_gsea$plot_GO_CC
@@ -1323,7 +1500,7 @@ shinyServer(function(input,output, session){
       gene <- as.character(do.call('rbind', strsplit(as.character(gene), split = ',', fixed = TRUE)))
       print(gene)
     }
-
+    
     return(gene)
   })
   

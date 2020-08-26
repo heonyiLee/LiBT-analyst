@@ -1,5 +1,11 @@
 $(document).ready(function(){
   
+//  $(window).resize(function(e) {
+//    dimension[0] = window.innerWidth;
+//    dimension[1] = window.innerHeight;
+//    Shiny.onInputChange("dimension", dimension);
+//  });
+  
   var data_table = "hide";
   $("#data_table .load-container").hide();
   
@@ -81,6 +87,14 @@ $(document).ready(function(){
     rightbar_width = $("#controlbar aside").css('width');
     size_table = parseInt(content_width) - parseInt(rightbar_width) - 20;
     size_plot = (size_table / 2) - 10;
+
+  });
+
+  var dimension = [0, 0];
+  $("#zoom_pathway_btn").click(function(){
+    dimension[0] = window.innerWidth;
+    dimension[1] = window.innerHeight;
+    Shiny.onInputChange("dimension", dimension);
   });
  
   $(".nav.navbar-nav a").click(function(){

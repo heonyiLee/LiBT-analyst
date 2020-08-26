@@ -9,8 +9,7 @@ library(shinyjqui)
 library(sortable)
 library(V8)
 library(httr)
-                        
-# 2019.12.30
+
 ui <- function(request) {shinyUI(
   dashboardPagePlus(
     dashboardHeaderPlus(
@@ -128,13 +127,28 @@ ui <- function(request) {shinyUI(
               tabPanel("Results of GSA Pathview",
                        fluidRow(
                          box(
-                           id = "pathview_box",
+                           title="Top 10 of KEGG pathway",
+                           id = "top10_pathview_box",
                            solidHeader = T,
                            width = 12,
-                           # plotOutput("pathview_result"),
+                           DT::dataTableOutput("topOfKeggDT")
+                         ),
+                         box(
+                           id = "pathview_select_box",
+                           solidHeader = T,
+                           width=6,
                            selectInput("pathID_selector", label="Choose a pathway ID",
                                        choices=""),
-                           downloadButton("download_pathview", "Save_pathview")
+                           actionButton("render_pathway_btn", "Render pathway"),
+                           actionButton("zoom_pathway_btn", "Zoom"),
+                           downloadButton("download_pathview", "Save pathway")
+                           
+                         ),
+                         box(
+                           id = "pathview_result_box",
+                           solidHeader = T,
+                           width = 6,
+                           plotOutput("pathview_result")
                          )
                          ,useShinyalert()
                        )
@@ -173,39 +187,39 @@ ui <- function(request) {shinyUI(
                        )
               ),#End of GSEA
               tabPanel("Results of GSEA Pathview",
-                fluidRow(
-                  box(
-                    tags$head(
-                      tags$script("function gsea_pathview(d){
+                       fluidRow(
+                         box(
+                           tags$head(
+                             tags$script("function gsea_pathview(d){
                            alert(d.getAttribute('val'));
                            Shiny.onInputChange('js.gsea.pathview',d.getAttribute('val'));}"
-                      )
-                    ),
-                    id = "gsea_pathview_box",
-                    solidHeader = T,
-                    width = 12,
-                    hidden(imageOutput("gsea_pathview_image",height="1000px")),
-                    h3(id="gsea_up_title","Up-regulated:"),
-                    DT::dataTableOutput("result_of_gsea_up_regulated"),
-                    h3(id="gsea_down_title","Down-regulated:"),
-                    DT::dataTableOutput("result_of_gsea_down_regulated"),
-                    downloadButton("download_gsea_pathview","Save_GSEA_Pathview Zip", "download_gsea_pathview"),
-                  ),
-                  useShinyalert()
-                )
+                             )
+                           ),
+                           id = "gsea_pathview_box",
+                           solidHeader = T,
+                           width = 12,
+                           hidden(imageOutput("gsea_pathview_image",height="1000px")),
+                           h3(id="gsea_up_title","Up-regulated:"),
+                           DT::dataTableOutput("result_of_gsea_up_regulated"),
+                           h3(id="gsea_down_title","Down-regulated:"),
+                           DT::dataTableOutput("result_of_gsea_down_regulated"),
+                           downloadButton("download_gsea_pathview","Save_GSEA_Pathview Zip", "download_gsea_pathview"),
+                         ),
+                         useShinyalert()
+                       )
               ),
               tabPanel("Result of PPI Network Analysis",
-                 fluidRow(
-                   box(
-                     id = "ppi_box",
-                     solidHeader = T,
-                     width = 12,
-                     downloadButton("ppi_image_download_btn", "Download PPI Network PNG"),
-                     downloadButton("ppi_tsv_download_btn", "Download PPI Network tsv"),
-                     withSpinner(uiOutput("ppi_image"))
-                   )
-                   ,useShinyalert()
-                 )
+                       fluidRow(
+                         box(
+                           id = "ppi_box",
+                           solidHeader = T,
+                           width = 12,
+                           downloadButton("ppi_image_download_btn", "Download PPI Network PNG"),
+                           downloadButton("ppi_tsv_download_btn", "Download PPI Network tsv"),
+                           withSpinner(uiOutput("ppi_image"))
+                         )
+                         ,useShinyalert()
+                       )
               )
             )#End of tabBox
           )#End of fluidRow

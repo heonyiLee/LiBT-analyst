@@ -1,7 +1,29 @@
 #pca_plot_box .form-group .shiny-input-container {margin-left:500px;}
+
+.modal {
+  text-align:center;
+}
+
+@media screen and (min-width:768px) {
+  .modal:before {
+    display: inline-block;
+    vertical-align: middle;
+    content:"";
+  }
+}
+
 .modal-dialog {
-  width: fit-content !important;
-  height: fit-content !important;
+  background-color:transparent;
+  width:fit-content;
+  vertical-align: middle;
+}
+
+.modal-content {
+  background-color:transparent;
+}
+
+.modal-body > div {
+  display :inline;
 }
 
 .download_exp_btn {margin-left:15px; margin-bottom:15px; background-color:#14d1ff; color:white;}
@@ -32,3 +54,4 @@
   image-rendering: optimize-contrast;
 }
 #ppi_image >div >img {width:100%;}
+
