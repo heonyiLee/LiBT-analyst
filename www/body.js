@@ -66,11 +66,6 @@ $(document).ready(function(){
      $("#kegg_gsea_box .load-container").show();
    });
   
-  
-  function gsea_pathview(pathway_name){
-    Shiny.onInputChange("js.gsea.pathview",pathway_name);
-  }
-  
   $("#ppi_box .load-container").hide();
   $("#ppi_btn").click(function(){
      $("#ppi_box .load-container").show();

@@ -191,8 +191,7 @@ ui <- function(request) {shinyUI(
                          box(
                            tags$head(
                              tags$script("function gsea_pathview(d){
-                           alert(d.getAttribute('val'));
-                           Shiny.onInputChange('js.gsea.pathview',d.getAttribute('val'));}"
+                                Shiny.onInputChange('js.gsea.pathview',d.getAttribute('val'));}"
                              )
                            ),
                            id = "gsea_pathview_box",
