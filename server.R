@@ -26,6 +26,7 @@ shinyServer(function(input,output, session){
   info <- c()
   sample_num <- c()
   time <- c()
+  base_dir <- getwd()
   gsa_pathview_dir <- c()
   gsea_pathview_dir <- c()
   
@@ -151,6 +152,7 @@ shinyServer(function(input,output, session){
         }
       }
     }
+    make_dir()
   })
   
   
@@ -274,7 +276,6 @@ shinyServer(function(input,output, session){
       timeLine <<- rbind(timeLine,newTL)
       addTimeLine(timeLine)
     }
-    make_dir()
   })
   
   observeEvent(input$thres_type, {
@@ -384,8 +385,8 @@ shinyServer(function(input,output, session){
   output$download_dep_info_btn <- downloadHandler(
     filename = function() {paste0(input$file_type,"_DEP_info_data_", Sys.Date(), ".csv")},
     content = function(file) {
-      if(!is.null(data_results())){
-        write.csv(data_results(),file,row.names=F,quote=F)
+      if(!is.null(dep())){
+        write.csv(rowData(dep()),file,row.names=F,quote=F)
       }
     }
   )
@@ -465,6 +466,7 @@ shinyServer(function(input,output, session){
   )
   
   observeEvent(input$gsa_btn,{
+    setwd(base_dir)
     if(!is.null(dep())){
       shinyalert("Start GSA!","Please wait for a while", type="info", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
@@ -518,78 +520,8 @@ shinyServer(function(input,output, session){
     }
   )
   
-  observeEvent(input$gsa_btn, {
-    kegg_info <- reverted_gsa_kegg()
-    pathway_choices <- kegg_info$Term
-    updateSelectInput(session, "pathID_selector",
-                      choices = pathway_choices, selected = "")
-  })
-  
-  
-  observeEvent(input$pathID_selector, {
-    # output$pathview_result <- pathway_graph()
-    if(input$pathID_selector!="") {
-      showModal(modalDialog(
-        title=input$pathID_selector,
-        size=c("l"),
-        renderImage({
-          outfile <- pathway_graph()
-          
-          list(src=outfile, contentType="image/png+xml",
-               width="100%",height="100%",
-               alt="Pathview_graph")}, deleteFile=F),
-        footer=NULL,
-        easyClose=TRUE
-      ))
-      # output$pathview_result <- renderImage({
-      #   outfile <- pathway_graph()
-      #   
-      #   list(src=outfile, contentType="image/png+xml",
-      #        width="100%", height="100%",
-      #        alt="Pathview_graph")}, deleteFile=F)
-      
-    }
-    
-  })
-  
-  pathway_graph <- reactive({
-    kegg_info <- reverted_gsa_kegg()
-    rowdt <- rowData(dep())
-    if(input$gsa_input_set == "dep"){
-      rowdt <- rowdt[rowdt$significant == T,]
-    }
-    pathway_name <- selected_pathway()
-    
-    fc <- rowdt[,grep('diff',colnames(rowdt))]
-    names(fc) <- rowdt$name
-    
-    pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
-    
-    dir <- getwd()
-    dir <- strsplit(dir,"/",fixed = T)
-    dir <- as.character(unlist(dir))
-    dir <- dir[length(dir)]
-    if(dir != gsa_pathview_dir){
-      setwd(gsa_pathview_dir)
-    }
-    pathview_dir <- "./xml"
-    outfile <- paste0("hsa", pathid,".pathview.png")
-    pathview(fc, pathway.id=pathid, gene.idtype="SYMBOL", species = "hsa",
-             kegg.dir=pathview_dir)
-    
-    return(outfile)
-  })
-  
-  output$download_gsa_pathview <- downloadHandler(
-    filename = function() {
-      paste0("Pathview_", selected_pathway(), ".png")},
-    content = function(file) {
-      file.copy(pathway_graph(), file)
-    },
-    contentType = "image/png"
-  )
-  
   observeEvent(input$gsea_btn, {
+    setwd(base_dir)
     if(!is.null(res_test())){
       shinyalert("Start GSEA!","Please wait for a while", type="info", timer = 10000,
                  closeOnClickOutside = T, closeOnEsc = T)
@@ -660,6 +592,7 @@ shinyServer(function(input,output, session){
   )
   
   observeEvent(input$js.gsea.pathview,{
+    setwd(base_dir)
     shinyjs::show("gsea_pathview_image")
     kegg_info <- reverted_gsea_kegg()
     rowdt <- rowData(dep())
@@ -693,13 +626,7 @@ shinyServer(function(input,output, session){
     filename = function() {
       paste0(gsea_pathview_dir,".zip")},
     content = function(file) {
-      dir <- getwd()
-      dir <- strsplit(dir,"/",fixed = T)
-      dir <- as.character(unlist(dir))
-      dir <- dir[length(dir)]
-      if(dir == gsea_pathview_dir){
-        setwd("../")
-      }
+      setwd(base_dir)
       png_list <- list.files(path=gsea_pathview_dir, pattern=".png")
       file_set <- c()
       for(i in 1:length(png_list)){
@@ -721,9 +648,6 @@ shinyServer(function(input,output, session){
                     selection ="single") 
     }, server=T)
   })
-  
-  
-  
   
   
   # observeEvent(input$pathID_selector,{
@@ -850,6 +774,8 @@ shinyServer(function(input,output, session){
   output$ppi_image_download_btn <- downloadHandler(
     filename = paste0("PPI_network_STRINGDB_", Sys.Date(), ".png"),
     content = function(file) {
+      shinyalert("start download PPI Network image!","please wait for a while", type="info", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
       GET(string_image_download_url(), write_disk(file))
     }
   )
@@ -857,6 +783,8 @@ shinyServer(function(input,output, session){
   output$ppi_tsv_download_btn <- downloadHandler(
     filename = paste0("PPI_network_STRINGDB_", Sys.Date(), ".tsv"),
     content = function(file) {
+      shinyalert("start download PPI Network tsv!","please wait for a while", type="info", timer = 10000,
+                 closeOnClickOutside = T, closeOnEsc = T)
       GET(string_tsv_download_url(), write_disk(file))
     }
   )
@@ -1243,8 +1171,8 @@ shinyServer(function(input,output, session){
     return(top_kegg)
   })
   
-  
   pathway_graph <- eventReactive(list(input$render_pathway_btn, input$topOfKeggDT_rows_selected),{
+    setwd(base_dir)
     pathway_name <- selected_pathway()
     kegg_info <- reverted_gsa_kegg()
     rowdt <- rowData(dep())
@@ -1255,11 +1183,17 @@ shinyServer(function(input,output, session){
     
     pathid <- as.character(kegg_info[kegg_info$Term==pathway_name, "kegg_id"])
     
+    dir <- getwd()
+    dir <- strsplit(dir,"/",fixed = T)
+    dir <- as.character(unlist(dir))
+    dir <- dir[length(dir)]
+    if(dir != gsa_pathview_dir){
+      setwd(gsa_pathview_dir)
+    }
+    pathview_dir <- "./xml"
     outfile <- paste0("hsa", pathid,".pathview.png")
-    
     pathview(fc, pathway.id=pathid, gene.idtype="SYMBOL", species = "hsa",
-             kegg.dir="./PATHVIEW/")
-    
+             kegg.dir=pathview_dir)
     return(outfile)
   })
   
@@ -1413,9 +1347,21 @@ shinyServer(function(input,output, session){
   })
   
   plot_gsea_gobp <- reactive({
-    res_gsea <- result_gsea()
-    plot_gobp <- res_gsea$plot_GO_BP
-    output$gobp_gsea_plot <- renderPlot(plot_gobp)
+    # res_gsea <- result_gsea()
+    # plot_gobp <- res_gsea$plot_GO_BP
+    res_gobp <- result_gsea_gobp()
+    filt_gobp <-  rbind(head(res_gobp, n = 10),tail(res_gobp, n = 10 ))
+    output$gobp_gsea_plot <- renderPlot({
+      Sys.sleep(0.5)
+      ggplot(filt_gobp, aes(reorder(pathway, NES), NES)) +
+        geom_segment(aes(reorder(pathway, NES), xend=pathway, y=0, yend=NES)) +
+        geom_point(size=5, aes( fill = Enrichment), shape=21, stroke=2) +
+        scale_fill_manual(values = c("Down-regulated" = "dodgerblue", "Up-regulated" = "firebrick") ) +
+        coord_flip() +
+        labs(x="Pathway", y="Normalized Enrichment Score", title=paste0("GSEA - GOBP")) +
+        theme(text = element_text(size="15"))+
+        theme_minimal()
+    })
   })
   
   result_gsea_gocc <- reactive({
@@ -1429,9 +1375,21 @@ shinyServer(function(input,output, session){
   })
   
   plot_gsea_gocc <- reactive({
-    res_gsea <- result_gsea()
-    plot_gocc <- res_gsea$plot_GO_CC
-    output$gocc_gsea_plot <- renderPlot(plot_gocc)
+    # res_gsea <- result_gsea()
+    # plot_gocc <- res_gsea$plot_GO_CC
+    res_gocc <- result_gsea_gocc()
+    filt_gobp <-  rbind(head(res_gocc, n = 10),tail(res_gocc, n = 10 ))
+    output$gocc_gsea_plot <- renderPlot({
+      Sys.sleep(0.5)
+      ggplot(filt_gobp, aes(reorder(pathway, NES), NES)) +
+        geom_segment(aes(reorder(pathway, NES), xend=pathway, y=0, yend=NES)) +
+        geom_point(size=5, aes( fill = Enrichment), shape=21, stroke=2) +
+        scale_fill_manual(values = c("Down-regulated" = "dodgerblue", "Up-regulated" = "firebrick") ) +
+        coord_flip() +
+        labs(x="Pathway", y="Normalized Enrichment Score", title=paste0("GSEA - GOCC")) +
+        theme(text = element_text(size="15"))+
+        theme_minimal()
+    })
   })
   
   result_gsea_gomf <- reactive({
@@ -1446,8 +1404,21 @@ shinyServer(function(input,output, session){
   
   plot_gsea_gomf <- reactive({
     res_gsea <- result_gsea()
-    plot_gomf <- res_gsea$plot_GO_MF
-    output$gomf_gsea_plot <- renderPlot(plot_gomf)
+    # plot_gomf <- res_gsea$plot_GO_MF
+    # fgRes <- res_gsea$result_GO_MF
+    res_gomf <- result_gsea_gomf()
+    filt_gomf <-  rbind(head(res_gomf, n = 10),tail(res_gomf, n = 10 ))
+    output$gomf_gsea_plot <- renderPlot({
+      Sys.sleep(0.5)
+      ggplot(filt_gomf, aes(reorder(pathway, NES), NES)) +
+        geom_segment(aes(reorder(pathway, NES), xend=pathway, y=0, yend=NES)) +
+        geom_point(size=5, aes( fill = Enrichment), shape=21, stroke=2) +
+        scale_fill_manual(values = c("Down-regulated" = "dodgerblue", "Up-regulated" = "firebrick") ) +
+        coord_flip() +
+        labs(x="Pathway", y="Normalized Enrichment Score", title=paste0("GSEA - GOMF")) +
+        theme(text = element_text(size="15"))+
+        theme_minimal()
+    })
   })
   
   result_gsea_kegg <- reactive({
@@ -1461,9 +1432,21 @@ shinyServer(function(input,output, session){
   })
   
   plot_gsea_kegg <- reactive({
-    res_gsea <- result_gsea()
-    plot_kegg <- res_gsea$plot_Kegg
-    output$kegg_gsea_plot <- renderPlot(plot_kegg)
+    # res_gsea <- result_gsea()
+    # plot_kegg <- res_gsea$plot_Kegg
+    res_kegg <- result_gsea_kegg()
+    filt_kegg <-  rbind(head(res_kegg, n = 10),tail(res_kegg, n = 10 ))
+    output$kegg_gsea_plot <- renderPlot({
+      Sys.sleep(0.5)
+      ggplot(filt_kegg, aes(reorder(pathway, NES), NES)) +
+        geom_segment(aes(reorder(pathway, NES), xend=pathway, y=0, yend=NES)) +
+        geom_point(size=5, aes( fill = Enrichment), shape=21, stroke=2) +
+        scale_fill_manual(values = c("Down-regulated" = "dodgerblue", "Up-regulated" = "firebrick") ) +
+        coord_flip() +
+        labs(x="Pathway", y="Normalized Enrichment Score", title=paste0("GSEA - Kegg")) +
+        theme(text = element_text(size="15"))+
+        theme_minimal()
+    })
   })
   
   reverted_gsea_kegg <- reactive({
@@ -1484,13 +1467,13 @@ shinyServer(function(input,output, session){
     dep <- data.frame(gene,fc,pval,qval)
     
     ppi_condition <- input$select_ppi_condition
-    if(ppi_condition == "P.adj"){
+    if(ppi_condition == "padj"){
       dep <- dep[order(dep$qval),]  
       gene <- as.character(dep$gene[c(1:input$input_num_toppi)])
-    } else if (ppi_condition == "P.val"){
+    } else if (ppi_condition == "pval"){
       dep <- dep[order(dep$pval),]
       gene <- as.character(dep$gene[c(1:input$input_num_toppi)])
-    } else if (ppi_condition == "log2FC") {
+    } else if (ppi_condition == "log2fc") {
       dep <- dep[order(-dep$fc),]
       gene <- as.character(dep$gene[c(1:input$input_num_toppi)])
     } else{

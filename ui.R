@@ -392,8 +392,26 @@ ui <- function(request) {shinyUI(
             uiOutput("dep_down"),
             radioButtons("gsa_set", label="Choose Data set",
                          choices = list("Case-UP" = "caseup", "Ctrl-UP" = "casedown")),
-            radioButtons("gsa_input_set", label="Choose input Data",
-                         choices = list("Total" = "total", "DEP" = "dep")),
+            tags$div(
+              id="gsa_input_set", class="form-group shiny-input-radiogroup shiny-input-container",
+              tags$label(class="control-label", `for`="gsa_input_set", "Choose stats of gene level"),
+              tags$div(class="shiny-options-group",
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="gsa_input_set", value="total", 
+                                             tags$span(HTML("Total")))
+                                )
+                       ),
+                       tags$div(class="radio",
+                                tags$label(
+                                  tags$input(type="radio", name="gsa_input_set", value="dep",checked="checked",
+                                             tags$span(HTML("DEP")))
+                                )
+                       )
+              )
+            ),
+            # radioButtons("gsa_input_set", label="Choose input Data",
+            #              choices = list("Total" = "total", "DEP" = "dep")),
             # radioButtons("gsa_tool", label="Choose GSA Tool", 
             #              choices = list("enrichR" = "enrichR", "DAVID" = "DAVID")),
             numericInput("set_nterm", label = HTML("Set a number of showed Term <br/>for barplot"),
@@ -458,13 +476,13 @@ ui <- function(request) {shinyUI(
               tags$div(class="shiny-options-group",
                        tags$div(class="radio",
                                 tags$label(
-                                  tags$input(type="radio", name="select_ppi_condition", value="P.adj", checked="checked",
+                                  tags$input(type="radio", name="select_ppi_condition", value="padj", checked="checked",
                                              tags$span(HTML("P.adj")))
                                 )
                        ),
                        tags$div(class="radio",
                                 tags$label(
-                                  tags$input(type="radio", name="select_ppi_condition", value="P.value",
+                                  tags$input(type="radio", name="select_ppi_condition", value="pval",
                                              tags$span(HTML("P.value")))
                                 )
                        ),

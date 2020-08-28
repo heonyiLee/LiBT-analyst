@@ -662,6 +662,8 @@ enrichR <- function(genes){
 }
 
 gsea <- function(rowData, stats){
+  rowData <- read.csv("D:/input_gsa.csv")
+  stats <- "d"
   print("Start GSEA")
   set.seed(1234)
   rowData <- as.data.frame(rowData)
@@ -686,7 +688,7 @@ gsea <- function(rowData, stats){
   dir <- "./base/"
   cate <- c("Kegg","GO_BP", "GO_CC","GO_MF")
   gmts <- c("c2.cp.kegg.v7.1.symbols.gmt","c5.bp.v7.1.symbols.gmt", "c5.cc.v7.1.symbols.gmt", "c5.mf.v7.1.symbols.gmt")
-  
+  i=1
   for(i in 1:4){
     myGO = gmtPathways(paste0(dir,gmts[i]))
     
@@ -715,25 +717,26 @@ gsea <- function(rowData, stats){
     
     fgRes = fgRes[ !is.na(match(fgRes$pathway, c( Up$mainPathways, Down$mainPathways))), ] %>% arrange(desc(NES))
     fgRes$Enrichment = ifelse(fgRes$NES > 0, "Up-regulated", "Down-regulated")
-    filtRes = rbind(head(fgRes, n = 10),tail(fgRes, n = 10 ))
-    
-    g = ggplot(filtRes, aes(reorder(pathway, NES), NES)) +
-      geom_segment(aes(reorder(pathway, NES), xend=pathway, y=0, yend=NES)) +
-      geom_point(size=5, aes( fill = Enrichment), shape=21, stroke=2) +
-      scale_fill_manual(values = c("Down-regulated" = "dodgerblue", "Up-regulated" = "firebrick") ) +
-      coord_flip() + 
-      labs(x="Pathway", y="Normalized Enrichment Score", title=paste0("GSEA - ",cate[i])) +
-      theme(text = element_text(size="15"))+
-      theme_minimal()
+    # filtRes = rbind(head(fgRes, n = 10),tail(fgRes, n = 10 ))
+    # 
+    # g = ggplot(filtRes, aes(reorder(pathway, NES), NES)) +
+    #   geom_segment(aes(reorder(pathway, NES), xend=pathway, y=0, yend=NES)) +
+    #   geom_point(size=5, aes( fill = Enrichment), shape=21, stroke=2) +
+    #   scale_fill_manual(values = c("Down-regulated" = "dodgerblue", "Up-regulated" = "firebrick") ) +
+    #   coord_flip() +
+    #   labs(x="Pathway", y="Normalized Enrichment Score", title=paste0("GSEA - ",cate[i])) +
+    #   theme(text = element_text(size="15"))+
+    #   theme_minimal()
     
     assign(paste0("result_",cate[i]), fgRes)
-    assign(paste0("plot_",cate[i]), g)
+    # assign(paste0("plot_",cate[i]), g)
     
   }
   
-  output = list("result_GO_BP" = result_GO_BP, "result_GO_CC" = result_GO_CC, "result_GO_MF" = result_GO_MF, "result_Kegg" = result_Kegg,
-                "plot_GO_BP" = plot_GO_BP, "plot_GO_CC" = plot_GO_CC, "plot_GO_MF" = plot_GO_MF, "plot_Kegg" = plot_Kegg)
-  
+  output = list("result_GO_BP" = result_GO_BP, "result_GO_CC" = result_GO_CC, "result_GO_MF" = result_GO_MF, "result_Kegg" = result_Kegg)
+  # ,
+  #               "plot_GO_BP" = plot_GO_BP, "plot_GO_CC" = plot_GO_CC, "plot_GO_MF" = plot_GO_MF, "plot_Kegg" = plot_Kegg)
+  # 
   return(output)
 }
 
