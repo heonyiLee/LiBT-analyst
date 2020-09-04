@@ -21,6 +21,8 @@ $(document).ready(function(){
   $(".btn-file").click(function(){
     if(data_table != "hide"){
       $("#uploaded_file_header").attr('style','visibility:hidden');
+       $(".download_exp_btn").attr('style','display:none');
+      $(".download_dep_info_btn").attr('style','display:none');
     }
   });
 

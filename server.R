@@ -81,9 +81,6 @@ shinyServer(function(input,output, session){
           if(length(state)==0){
             shinyjs::disable("TMT_input_option")
           }
-        } else{
-          shinyjs::disable("TMT_tool_option")
-          shinyjs::disable("TMT_input_option")
         }
       }
       
