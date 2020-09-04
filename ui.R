@@ -513,5 +513,3 @@ ui <- function(request) {shinyUI(
     useShinyjs()
   ))
 }
-
-

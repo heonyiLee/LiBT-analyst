@@ -2,9 +2,9 @@ file_input_test <- function(file, file_type) {
   switch(file_type,
          "TMT" = 
            {cols <- colnames(file)[grep("Abundance", colnames(file))]
-            if(length(cols)==0){
-              cols <- colnames(file)[grep("Reporter", colnames(file))]
-            }},
+           if(length(cols)==0){
+             cols <- colnames(file)[grep("Reporter", colnames(file))]
+           }},
          "iBAQ" = 
            {cols <- colnames(file)[grep("iBAQ", colnames(file))]},
          "LFQ" = 
