@@ -1,10 +1,10 @@
 $(document).ready(function(){
   
-//  $(window).resize(function(e) {
-//    dimension[0] = window.innerWidth;
-//    dimension[1] = window.innerHeight;
-//    Shiny.onInputChange("dimension", dimension);
-//  });
+  //$(window).resize(function(e) {
+    //dimension[0] = window.innerWidth;
+    //dimension[1] = window.innerHeight;
+   //Shiny.onInputChange("dimension", dimension);
+  //});
   
   var data_table = "hide";
   $("#data_table .load-container").hide();
@@ -87,9 +87,9 @@ $(document).ready(function(){
 
   var dimension = [0, 0];
   $("#zoom_pathway_btn").click(function(){
-    dimension[0] = window.innerWidth;
-    dimension[1] = window.innerHeight;
-    Shiny.onInputChange("dimension", dimension);
+    dimension[0] = 1344;
+    dimension[1] = 756;
+      Shiny.onInputChange("dimension", dimension);
   });
  
   $(".nav.navbar-nav a").click(function(){

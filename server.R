@@ -5,6 +5,7 @@ library(DEP)
 library(sortable)
 library(SummarizedExperiment)
 library(ggplot2)
+library(ggrepel)
 library(edgeR)
 library(factoextra)
 library(enrichR)
@@ -753,21 +754,11 @@ shinyServer(function(input,output, session){
       paste0("Pathview_", pathway_graph())},
     # paste0("Pathview_", selected_pathway(), ".png")},
     content = function(file) {
-      dir <- getwd()
-      dir <- strsplit(dir,"/",fixed = T)
-      dir <- as.character(unlist(dir))
-      dir <- dir[length(dir)]
-      if(dir == gsea_pathview_dir){
-        setwd("../")
-      }
-      png_list <- list.files(path=gsea_pathview_dir, pattern=".png")
-      file_set <- c()
-      for(i in 1:length(png_list)){
-        file_path <- paste0("./",gsea_pathview_dir,"/",png_list[i])  
-        file_set <- c(file_set, file_path)
-      }
-      zip(file,file_set)
-    }
+      print("!!!!!")
+      print(getwd())
+      file.copy(pathway_graph(), file)
+    },
+    contentType = "image/png"
   )
   
   observeEvent(input$input_num_toppi,{
@@ -826,20 +817,16 @@ shinyServer(function(input,output, session){
   
   
   zoom_values <- reactiveValues(
-    zoom_clicked = 0
+    zoom_clicked = 1
   )
   
   observeEvent(input$zoom_pathway_btn,{
     zoom_values$zoom_clicked <- zoom_values$zoom_clicked + 1
-    print("????????")
-    print(zoom_values$zoom_clicked)
   })
   
   
   observeEvent(input$dimension,{
     req(input$zoom_pathway_btn)
-    print("!!!!!!!!!!")
-    print(zoom_values$zoom_clicked)
     if(zoom_values$zoom_clicked==1) {
       width <- (input$dimension[1])*0.7
       height <- (input$dimension[2])*0.7
@@ -847,10 +834,8 @@ shinyServer(function(input,output, session){
       showModal(modalDialog(
         renderImage({
           outfile <- pathway_graph()
-          print("!!!!!!!!!!")
-          print(outfile)
-          # width <- (session$clientData$output_download_pathview_width)*0.7
-          # height <- (session$clientData$output_download_pathview_height)*0.7
+          width <- (session$clientData$output_download_pathview_width)*0.7
+          height <- (session$clientData$output_download_pathview_height)*0.7
           
           list(src=outfile, contentType="image/png",
                width=width, height=height,
@@ -1177,7 +1162,7 @@ shinyServer(function(input,output, session){
     pca_df <- get_pca_df(assay(dep()), colData(dep()), n)
     plot_pca(dep(), x=1, y=2, n=n, point_size=3, indicate = c("condition"))+
       ggtitle(paste("PCA plot -", n, "variable proteins", sep=" "))+
-      geom_text(data=pca_df,aes(label=rowname),nudge_y = 1.5)
+      geom_text_repel(data=pca_df,aes(label=rowname),nudge_y = 1)
   })
   
   correlation_input <- reactive({
