@@ -1,7 +1,10 @@
 file_input_test <- function(file, file_type) {
   switch(file_type,
          "TMT" = 
-           {cols <- colnames(file)[grep("Abundance", colnames(file))]},
+           {cols <- colnames(file)[grep("Abundance", colnames(file))]
+            if(length(cols)==0){
+              cols <- colnames(file)[grep("Reporter", colnames(file))]
+            }},
          "iBAQ" = 
            {cols <- colnames(file)[grep("iBAQ", colnames(file))]},
          "LFQ" = 
@@ -49,7 +52,7 @@ filter_with_option <- function(option, data) {
 
 
 
-get_main_data_LiB <- function(data, file_type) {
+get_main_data_MQ <- function(data, file_type) {
   rv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_rv_20200114ver.txt")
   nrv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_nrv_20200114ver.txt")
   
@@ -157,10 +160,16 @@ get_main_data_LiB <- function(data, file_type) {
   
   cn_data <- colnames(data)
   
-  if(file_type=="LFQ"){
+  if(file_type =="LFQ"){
     main_pos <- grep("LFQ",cn_data)
-  } else {
+  } else if(file_type =="iBAQ") {
     main_pos <- grep("iBAQ.",cn_data)
+  } else{
+    total_pos <- grep("Reporter", cn_data)
+    real_pos <- grep("corrected",cn_data)
+    real_pos <- intersect(total_pos, real_pos)
+    except_pos <- grep("FL_SET",cn_data)
+    main_pos <- setdiff(real_pos,except_pos)
   }
   
   main_data <- data[,main_pos]
@@ -195,7 +204,7 @@ get_main_data_LiB <- function(data, file_type) {
 
 
 
-get_main_data_T <- function(data,normalization) {
+get_main_data_PD <- function(data,normalization) {
   rv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_rv_20200114ver.txt")
   nrv_db <- read.delim("base/uniprot-filtered-organism_Human(9606)_nrv_20200114ver.txt")
   
@@ -287,14 +296,20 @@ get_main_data_T <- function(data,normalization) {
   } 
 }
 
-make_case_samples_LiB <- function(data, file_type) {
+make_case_samples_MQ <- function(data, file_type) {
   temp_col <- colnames(data)
-  temp_col <- temp_col[grep(file_type, temp_col)]
+  if(file_type == "TMT"){
+    temp_col <- temp_col[grep("Reporter", temp_col)]
+    
+  }else{
+    temp_col <- temp_col[grep(file_type, temp_col)]
+    
+  }
   
   return(temp_col)
 }
 
-make_case_samples_T <- function(data) {
+make_case_samples_PD <- function(data) {
   data <- data[,c(3:ncol(data))]
   temp_col <- colnames(data)
   
@@ -315,7 +330,7 @@ make_case_samples_T <- function(data) {
   return(col)
 }
 
-make_case_samples_diffT <- function(data,normalization) {
+make_case_samples_diffPD <- function(data,normalization) {
   cn <- colnames(data)
   data$ID <- as.character(data$ID)
   data_class <- sapply(data,class)
@@ -403,6 +418,10 @@ make_condition <- function(case,ctrl){
   case_name <- gsub("\\d+","",case_name)
   ctrl_name <- gsub("\\d+","",ctrl_name)
   
+  if(nchar(case_name)==0){
+    case_name <- "Case"
+    ctrl_name <- "Control"
+  }
   condition <- c(case_name,ctrl_name)
   
   return(condition)
@@ -412,6 +431,9 @@ make_condition <- function(case,ctrl){
 make_summarizedData <- function(main,file_type,design){
   if(file_type == "TMT"){
     data_col <- grep("Sample",colnames(main))
+    if(length(data_col)==0){
+      data_col <- grep("Reporter",colnames(main))
+    }
   } else if(file_type == "LFQ"){
     data_col <- grep("LFQ",colnames(main))
     main <- main[,c(1:(2+length(design$label)))]

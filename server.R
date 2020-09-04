@@ -36,11 +36,13 @@ shinyServer(function(input,output, session){
   
   observeEvent(input$file_type, {
     if(input$file_type=="TMT"){
+      shinyjs::show("TMT_tool_option")
       shinyjs::show("TMT_input_option")
       shinyjs::hide("nonTMT_input_option")
       shinyjs::hide("select_all_filtering_btn")
       shinyjs::hide("deselect_all_filtering_btn")
     }else{
+      shinyjs::hide("TMT_tool_option")
       shinyjs::hide("TMT_input_option")
       shinyjs::show("nonTMT_input_option")
       shinyjs::show("select_all_filtering_btn")
@@ -48,6 +50,18 @@ shinyServer(function(input,output, session){
     }
   })
   
+  observeEvent(input$TMT_tool_option, {
+    if(input$file_type=="TMT" & input$TMT_tool_option == "PD"){
+      print(input$TMT_tool_option)
+      shinyjs::show("TMT_input_option")
+      shinyjs::hide("nonTMT_input_option")
+    }else{
+      shinyjs::show("nonTMT_input_option")
+      shinyjs::show("select_all_filtering_btn")
+      shinyjs::show("deselect_all_filtering_btn")
+      shinyjs::hide("TMT_input_option")
+    }
+  })
   
   observeEvent(input$fileBrowser, {
     temp <- file_input()
@@ -58,10 +72,16 @@ shinyServer(function(input,output, session){
     } else {
       
       if(input$file_type=="TMT"){
-        state <- colnames(temp)[grep("normalized", colnames(temp), ignore.case = T)]
-        updateRadioButtons(session, "TMT_input_option", label="Get Normalized TMT data",
-                           choices = list("YES" = "T", "NO" = "F"), selected="F")
-        if(length(state)==0){
+        if(input$TMT_tool_option == "PD"){
+          shinyjs::show("TMT_input_option")
+          state <- colnames(temp)[grep("normalized", colnames(temp), ignore.case = T)]
+          updateRadioButtons(session, "TMT_input_option", label="Get Normalized TMT data",
+                             choices = list("YES" = "T", "NO" = "F"), selected="F")
+          if(length(state)==0){
+            shinyjs::disable("TMT_input_option")
+          }
+        } else{
+          shinyjs::disable("TMT_tool_option")
           shinyjs::disable("TMT_input_option")
         }
       }
@@ -137,7 +157,22 @@ shinyServer(function(input,output, session){
           
           addTimeLine(timeLine)
         } else{
-          info <- paste0("* Is normalized ? : ", input$TMT_input_option)
+          info <- paste0("*Research tool : " , input$TMT_tool_option,"\n")
+          if(input$TMT_tool_option=="PD"){
+            info <- paste0(info,"* Is normalized ? : ", input$TMT_input_option)
+          }else{
+            option <- c()
+            for(i in 1:length(input$nonTMT_input_option)){
+              if(i!=length(input$nonTMT_input_option)){
+                option <- paste0(option,input$nonTMT_input_option[i]," / ")  
+              } else{
+                option <- paste0(option,input$nonTMT_input_option[i])  
+              }
+            }
+            info <- paste0(info,"* Numerical Filter\n  : Peptides = 0\n    Intensity = 0\n",
+                           "* Categorical Filter\n", "  : ", option)
+          }
+          
           newTL <- data.frame(step="Data Input",info=info,
                               sample_num=as.numeric(nrow(render_df)),
                               time=as.character(Sys.time()),color="maroon",icon="file-upload")
@@ -796,11 +831,15 @@ shinyServer(function(input,output, session){
   
   observeEvent(input$zoom_pathway_btn,{
     zoom_values$zoom_clicked <- zoom_values$zoom_clicked + 1
+    print("????????")
+    print(zoom_values$zoom_clicked)
   })
   
   
   observeEvent(input$dimension,{
     req(input$zoom_pathway_btn)
+    print("!!!!!!!!!!")
+    print(zoom_values$zoom_clicked)
     if(zoom_values$zoom_clicked==1) {
       width <- (input$dimension[1])*0.7
       height <- (input$dimension[2])*0.7
@@ -808,6 +847,8 @@ shinyServer(function(input,output, session){
       showModal(modalDialog(
         renderImage({
           outfile <- pathway_graph()
+          print("!!!!!!!!!!")
+          print(outfile)
           # width <- (session$clientData$output_download_pathview_width)*0.7
           # height <- (session$clientData$output_download_pathview_height)*0.7
           
@@ -824,9 +865,6 @@ shinyServer(function(input,output, session){
     zoom_values$zoom_clicked <- 0
     removeModal()
   })
-  
-  
-  
   
   
   ##--------------------------------------------------- reactive/EventReactive Section
@@ -886,27 +924,32 @@ shinyServer(function(input,output, session){
   main_data <- eventReactive(input$file_upload_btn, {
     temp_df <- file_input()
     file_type <- input$file_type
-    if(file_type=="TMT"){
-      temp_df <- get_main_data_T(temp_df,input$TMT_input_option)
-    } else{
+    tool_type <- input$TMT_tool_option
+    if(file_type=="TMT" & tool_type=="PD"){
+      temp_df <- get_main_data_PD(temp_df,input$TMT_input_option)
+    }
+    else {
       checked_option <- input$nonTMT_input_option
       temp_df <- filter_with_option(checked_option, temp_df)
-      temp_df <- get_main_data_LiB(temp_df, file_type)
+      temp_df <- get_main_data_MQ(temp_df, file_type)
     }
-    
   })
   
   total_samples <- reactive({
     df <- main_data()
     file_type <- input$file_type
     if(file_type=="TMT"){
-      if(input$TMT_input_option=="T"){
-        samples <- make_case_samples_diffT(df, input$TMT_input_option)
-      } else {
-        samples <- make_case_samples_T(df)
+      if(input$TMT_tool_option == "MQ"){
+        samples <- make_case_samples_MQ(df, file_type)
+      }else{
+        if(input$TMT_input_option=="T"){
+          samples <- make_case_samples_diffPD(df, input$TMT_input_option)
+        } else {
+          samples <- make_case_samples_PD(df)
+        }
       }
     } else{
-      samples <- make_case_samples_LiB(df, file_type)
+      samples <- make_case_samples_MQ(df, file_type)
     }
     return(samples)
   })
