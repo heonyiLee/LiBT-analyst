@@ -472,7 +472,7 @@ ui <- function(request) {shinyUI(
           closable = F,
           footer = fluidRow(
             pickerInput("input_organism_toppi", label=HTML("Choose organism"), choices = c("Homo Sapiens", "Mus musculus")),
-            numericInput("input_num_toppi", label = HTML("Choose number of input gene <br/> (Defualt : # of DEP)"),value=100),
+            numericInput("input_num_toppi", label = HTML("Choose number of input gene <br/> (Defualt[=max] : # of DEP)"),value=100),
             tags$div(
               id="select_ppi_condition", class="form-group shiny-input-radiogroup shiny-input-container",
               tags$label(class="control-label", `for`="select_ppi_condition", "Choose condition of gene select"),
