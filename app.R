@@ -2,16 +2,15 @@ ipak <- function(pkg){
   new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
   if (length(new.pkg))
     install.packages(new.pkg, dependencies = TRUE,logical.return=TRUE)
-  sapply(pkg, require, character.only = TRUE)
-}
-bipak <- function(pkg){
-  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
-  if (length(new.pkg))
+  require_pkg <- sapply(pkg, require, character.only = TRUE)
+  isFalse <- as.numeric(which(require_pkg == F))
+  if(length(isFalse) != 0){
     if (!requireNamespace("BiocManager", quietly = TRUE))
       install.packages("BiocManager")
-  BiocManager::install(new.pkg)
-  sapply(pkg, require, character.only = TRUE)
+    BiocManager::install(pkg[isFalse])
+  }
 }
+
 #DEP, edgeR, gage, fgsea, pathview install by BiocManager
 pkg <- c("shiny","shinyjs","shinydashboard","shinydashboardPlus",
          "shinyWidgets","shinyalert","shinycssloaders","shinyjqui",
@@ -20,5 +19,5 @@ pkg <- c("shiny","shinyjs","shinydashboard","shinydashboardPlus",
          "ggplot2","edgeR","factoextra","enrichR","tibble",
          "gage","fgsea","pathview","zip")
 ipak(pkg)
-bipak(pkg)
+
 shinyApp(ui=ui, server=server)
